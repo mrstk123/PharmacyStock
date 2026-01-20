@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PharmacyStock.API", "PharmacyStock.API\PharmacyStock.API.csproj", "{493CB74F-4E4A-4401-8017-DED18C776647}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PharmacyStock.Domain", "PharmacyStock.Domain\PharmacyStock.Domain.csproj", "{4B152EA4-CE1B-49CA-B90E-D86606FE2F9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PharmacyStock.Infrastructure", "PharmacyStock.Infrastructure\PharmacyStock.Infrastructure.csproj", "{F82C3E63-19FD-4D7E-821F-8DC4EA2CAFCD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PharmacyStock.Application", "PharmacyStock.Application\PharmacyStock.Application.csproj", "{713730AE-CB77-4797-B6E4-3B6671EA7944}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{493CB74F-4E4A-4401-8017-DED18C776647}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{493CB74F-4E4A-4401-8017-DED18C776647}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{493CB74F-4E4A-4401-8017-DED18C776647}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{493CB74F-4E4A-4401-8017-DED18C776647}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B152EA4-CE1B-49CA-B90E-D86606FE2F9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B152EA4-CE1B-49CA-B90E-D86606FE2F9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B152EA4-CE1B-49CA-B90E-D86606FE2F9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B152EA4-CE1B-49CA-B90E-D86606FE2F9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F82C3E63-19FD-4D7E-821F-8DC4EA2CAFCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F82C3E63-19FD-4D7E-821F-8DC4EA2CAFCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F82C3E63-19FD-4D7E-821F-8DC4EA2CAFCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F82C3E63-19FD-4D7E-821F-8DC4EA2CAFCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{713730AE-CB77-4797-B6E4-3B6671EA7944}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{713730AE-CB77-4797-B6E4-3B6671EA7944}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{713730AE-CB77-4797-B6E4-3B6671EA7944}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{713730AE-CB77-4797-B6E4-3B6671EA7944}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
