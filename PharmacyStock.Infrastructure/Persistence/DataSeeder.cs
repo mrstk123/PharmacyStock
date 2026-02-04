@@ -52,7 +52,7 @@ public static class DataSeeder
             {
                 Id = 2,
                 Username = "admin",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                 RoleId = adminRole!.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -71,7 +71,7 @@ public static class DataSeeder
             {
                 Id = 3,
                 Username = "pharmacist",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("pharmacist"),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Pharmacist@123"),
                 RoleId = pharmacistRole!.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
