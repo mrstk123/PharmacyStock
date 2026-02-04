@@ -23,7 +23,7 @@ public partial class StockMovement
 
     public DateTime PerformedAt { get; set; }
 
-    public virtual MedicineBatch MedicineBatch { get; set; } = null!;
+    public MedicineBatch MedicineBatch { get; set; } = null!;
 
-    public virtual User PerformedByUser { get; set; } = null!;
+    public User PerformedByUser { get; set; } = null!;
 }

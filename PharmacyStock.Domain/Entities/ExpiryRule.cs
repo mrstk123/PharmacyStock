@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using PharmacyStock.Domain.Interfaces;
 
 namespace PharmacyStock.Domain.Entities;
 
-public partial class ExpiryRule
+public partial class ExpiryRule : IAuditableEntity
 {
     public int Id { get; set; }
 
@@ -23,5 +24,5 @@ public partial class ExpiryRule
 
     public string? UpdatedBy { get; set; }
 
-    public virtual Category? Category { get; set; }
+    public Category? Category { get; set; }
 }

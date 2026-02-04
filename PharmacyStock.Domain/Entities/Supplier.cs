@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using PharmacyStock.Domain.Interfaces;
 
 namespace PharmacyStock.Domain.Entities;
 
-public partial class Supplier
+public partial class Supplier : IAuditableEntity
 {
     public int Id { get; set; }
 
@@ -23,5 +24,5 @@ public partial class Supplier
 
     public string? UpdatedBy { get; set; }
 
-    public virtual ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
+    public ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
 }

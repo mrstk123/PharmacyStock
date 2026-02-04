@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using PharmacyStock.Domain.Interfaces;
 
 namespace PharmacyStock.Domain.Entities;
 
-public partial class Category
+public partial class Category : IAuditableEntity
 {
     public int Id { get; set; }
 
@@ -21,7 +22,7 @@ public partial class Category
 
     public string? UpdatedBy { get; set; }
 
-    public virtual ICollection<ExpiryRule> ExpiryRules { get; set; } = new List<ExpiryRule>();
+    public ICollection<ExpiryRule> ExpiryRules { get; set; } = new List<ExpiryRule>();
 
-    public virtual ICollection<Medicine> Medicines { get; set; } = new List<Medicine>();
+    public ICollection<Medicine> Medicines { get; set; } = new List<Medicine>();
 }

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using PharmacyStock.Domain.Interfaces;
 
 namespace PharmacyStock.Domain.Entities;
 
-public partial class Medicine
+public partial class Medicine : IAuditableEntity
 {
     public int Id { get; set; }
 
@@ -21,6 +22,8 @@ public partial class Medicine
 
     public string UnitOfMeasure { get; set; } = null!;
 
+    public int LowStockThreshold { get; set; } = 50;
+
     public bool IsActive { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -31,7 +34,7 @@ public partial class Medicine
 
     public string? UpdatedBy { get; set; }
 
-    public virtual Category Category { get; set; } = null!;
+    public Category Category { get; set; } = null!;
 
-    public virtual ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
+    public ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
 }

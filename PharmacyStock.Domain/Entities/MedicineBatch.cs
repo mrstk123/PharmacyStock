@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using PharmacyStock.Domain.Interfaces;
 
 namespace PharmacyStock.Domain.Entities;
 
-public partial class MedicineBatch
+public partial class MedicineBatch : IAuditableEntity
 {
     public int Id { get; set; }
 
@@ -21,7 +22,11 @@ public partial class MedicineBatch
 
     public int CurrentQuantity { get; set; }
 
-    public string Status { get; set; } = null!;
+    public decimal PurchasePrice { get; set; }
+
+    public decimal SellingPrice { get; set; }
+
+    public int Status { get; set; }
 
     public byte[] RowVersion { get; set; } = null!;
 
@@ -35,9 +40,9 @@ public partial class MedicineBatch
 
     public string? UpdatedBy { get; set; }
 
-    public virtual Medicine Medicine { get; set; } = null!;
+    public Medicine Medicine { get; set; } = null!;
 
-    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+    public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 
-    public virtual Supplier Supplier { get; set; } = null!;
+    public Supplier Supplier { get; set; } = null!;
 }
