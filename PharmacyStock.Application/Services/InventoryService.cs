@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using AutoMapper;
 using PharmacyStock.Application.DTOs;
 using PharmacyStock.Application.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using PharmacyStock.Application.Utilities;
 using PharmacyStock.Domain.Constants;
 using PharmacyStock.Domain.Entities;
@@ -21,9 +22,10 @@ public class InventoryService : IInventoryService
     private readonly IDashboardService _dashboardService;
     private readonly INotificationService _notificationService;
     private readonly ILogger<InventoryService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
 
-    public InventoryService(IUnitOfWork unitOfWork, ICacheService cacheService, ICurrentUserService currentUserService, IMapper mapper, IStockMovementSearcher searcher, IDashboardService dashboardService, INotificationService notificationService, ILogger<InventoryService> logger, IDashboardBroadcaster? broadcaster = null)
+    public InventoryService(IUnitOfWork unitOfWork, ICacheService cacheService, ICurrentUserService currentUserService, IMapper mapper, IStockMovementSearcher searcher, IDashboardService dashboardService, INotificationService notificationService, ILogger<InventoryService> logger, IServiceScopeFactory scopeFactory, IDashboardBroadcaster? broadcaster = null)
     {
         _unitOfWork = unitOfWork;
         _cacheService = cacheService;
@@ -33,6 +35,7 @@ public class InventoryService : IInventoryService
         _dashboardService = dashboardService;
         _notificationService = notificationService;
         _logger = logger;
+        _scopeFactory = scopeFactory;
         _broadcaster = broadcaster;
     }
 
@@ -75,7 +78,7 @@ public class InventoryService : IInventoryService
 
     public async Task<IEnumerable<MedicineBatchDto>> GetAllBatchesAsync()
     {
-        var batches = await _unitOfWork.MedicineBatches.FindAsync(b => true, b => b.Medicine, b => b.Supplier);
+        var batches = await _unitOfWork.MedicineBatches.FindAsync(b => true, b => b.OrderByDescending(x => x.UpdatedAt), b => b.Medicine, b => b.Supplier);
         return _mapper.Map<IEnumerable<MedicineBatchDto>>(batches);
     }
 
@@ -175,26 +178,122 @@ public class InventoryService : IInventoryService
         var expiryRules = await _unitOfWork.ExpiryRules.FindAsync(r => r.CategoryId == medicine.CategoryId && r.IsActive);
         var rule = expiryRules.FirstOrDefault();
 
-        int alertDays = rule?.WarningDays ?? 30;
+        int warningDays = rule?.WarningDays ?? 30;
+        int criticalDays = rule?.CriticalDays ?? 7;
 
-        if (createBatchDto.ExpiryDate < today.AddDays(alertDays))
+        var daysUntilExpiry = createBatchDto.ExpiryDate.DayNumber - today.DayNumber;
+
+        bool newNotificationCreated = false;
+        string? broadcastNotificationMessage = null;
+        string? broadcastSeverity = null;
+        NotificationDto? broadcastNotificationDto = null;
+
+        if (daysUntilExpiry <= warningDays)
         {
             dto.Warning = "Warning: Receiving short-dated stock.";
+
+            // Determine notification severity
+            NotificationType type;
+            int priority;
+            string title;
+            string severity;
+
+            if (daysUntilExpiry <= criticalDays)
+            {
+                type = NotificationType.Critical;
+                priority = 5;
+                title = "Critical Expiry Alert (New Stock)";
+                severity = "error";
+            }
+            else
+            {
+                type = NotificationType.Warning;
+                priority = 3;
+                title = "Expiry Warning (New Stock)";
+                severity = "warning";
+            }
+
+            // Check for existing duplicates to avoid spam
+            var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
+                n.IsSystemAlert &&
+                n.RelatedEntityId == batch.Id &&
+                n.RelatedEntityType == "Batch" &&
+                n.Type == type &&
+                n.CreatedAt.Date == DateTime.UtcNow.Date);
+
+            if (!existingAlerts.Any())
+            {
+                var notification = new Notification
+                {
+                    UserId = null,
+                    IsSystemAlert = true,
+                    Title = title,
+                    Message = $"{medicine.Name} (Batch {batch.BatchNumber}) received with short expiry ({daysUntilExpiry} days). Quantity: {createBatchDto.InitialQuantity} units.",
+                    Type = type,
+                    Priority = priority,
+                    IsRead = false,
+                    RelatedEntityId = batch.Id,
+                    RelatedEntityType = "Batch"
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification);
+                await _unitOfWork.SaveAsync();
+
+                newNotificationCreated = true;
+                broadcastSeverity = severity;
+                broadcastNotificationMessage = $"Received expiring stock: {medicine.Name}";
+                broadcastNotificationDto = _mapper.Map<NotificationDto>(notification);
+            }
         }
 
-        // Broadcast dashboard updates
+        var recentMovementDto = new RecentMovementDto
+        {
+            Id = movement.Id,
+            MedicineName = medicine.Name,
+            BatchNumber = batch.BatchNumber,
+            MovementType = movement.MovementType,
+            Quantity = movement.Quantity,
+            Reason = movement.Reason,
+            PerformedAt = movement.PerformedAt,
+            PerformedBy = _currentUserService.GetCurrentUsername() ?? SystemConstants.SystemUsername
+        };
+
+        // Consolidated broadcasting logic
         if (_broadcaster != null)
         {
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var stats = await _dashboardService.GetStatsAsync();
-                    await _broadcaster.BroadcastStatsUpdate(stats);
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var scopedDashboardService = scope.ServiceProvider.GetRequiredService<IDashboardService>();
+
+                        // Broadcast new movement immediately
+                        await _broadcaster.BroadcastRecentMovement(recentMovementDto);
+
+                        if (newNotificationCreated)
+                        {
+                            await scopedDashboardService.InvalidateAlertsCacheAsync();
+                            if (broadcastNotificationMessage != null && broadcastSeverity != null)
+                            {
+                                await _broadcaster.BroadcastNotification(broadcastNotificationMessage, broadcastSeverity);
+                            }
+                            if (broadcastNotificationDto != null)
+                            {
+                                await _broadcaster.BroadcastSystemAlert(broadcastNotificationDto);
+                            }
+                            var alerts = await scopedDashboardService.GetAlertsAsync();
+                            await _broadcaster.BroadcastAlertsUpdate(alerts);
+                        }
+
+                        var stats = await scopedDashboardService.GetStatsAsync();
+                        await _broadcaster.BroadcastStatsUpdate(stats);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to broadcast dashboard update after batch creation");
+                    _logger.LogWarning(ex, "Failed to broadcast updates after batch creation");
                 }
             });
         }
@@ -519,6 +618,19 @@ public class InventoryService : IInventoryService
         // Invalidate cache
         await _cacheService.RemoveAsync(CacheKeyBuilder.StockCheck(dispenseDto.MedicineId));
 
+        // Prepare DTOs for broadcasting
+        var recentMovementsDtos = movements.Select(m => new RecentMovementDto
+        {
+            Id = m.Id,
+            MedicineName = medicine.Name,
+            BatchNumber = validBatches.First(b => b.Id == m.MedicineBatchId).BatchNumber,
+            MovementType = m.MovementType,
+            Quantity = m.Quantity,
+            Reason = m.Reason,
+            PerformedAt = m.PerformedAt,
+            PerformedBy = _currentUserService.GetCurrentUsername() ?? SystemConstants.SystemUsername
+        }).ToList();
+
         // Broadcast dashboard updates
         if (_broadcaster != null)
         {
@@ -526,8 +638,19 @@ public class InventoryService : IInventoryService
             {
                 try
                 {
-                    var stats = await _dashboardService.GetStatsAsync();
-                    await _broadcaster.BroadcastStatsUpdate(stats);
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var scopedDashboardService = scope.ServiceProvider.GetRequiredService<IDashboardService>();
+
+                        // Broadcast new movements immediately
+                        foreach (var dto in recentMovementsDtos)
+                        {
+                            await _broadcaster.BroadcastRecentMovement(dto);
+                        }
+
+                        var stats = await scopedDashboardService.GetStatsAsync();
+                        await _broadcaster.BroadcastStatsUpdate(stats);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -656,8 +779,12 @@ public class InventoryService : IInventoryService
             {
                 try
                 {
-                    var stats = await _dashboardService.GetStatsAsync();
-                    await _broadcaster.BroadcastStatsUpdate(stats);
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var scopedDashboardService = scope.ServiceProvider.GetRequiredService<IDashboardService>();
+                        var stats = await scopedDashboardService.GetStatsAsync();
+                        await _broadcaster.BroadcastStatsUpdate(stats);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -759,9 +886,8 @@ public class InventoryService : IInventoryService
 
     public async Task SetBatchQuarantineAsync(int batchId, bool quarantine)
     {
-        var batch = await _unitOfWork.MedicineBatches.GetByIdAsync(batchId);
-        if (batch == null)
-            throw new InvalidOperationException($"Batch with ID {batchId} not found.");
+        var batch = await _unitOfWork.MedicineBatches.GetByIdAsync(batchId)
+            ?? throw new InvalidOperationException($"Batch with ID {batchId} not found.");
 
         if (quarantine)
         {
@@ -770,6 +896,9 @@ public class InventoryService : IInventoryService
         }
         else
         {
+            // Reset status to allow recalculation
+            batch.Status = (int)BatchStatus.Active;
+
             // Recalculate status (will set to Active, Expired, or Depleted based on current state)
             batch.Status = (int)BatchStatusHelper.CalculateBatchStatus(batch);
         }
@@ -810,6 +939,7 @@ public class InventoryService : IInventoryService
         var batches = await _unitOfWork.MedicineBatches.FindAsync(b =>
             medicineIds.Contains(b.MedicineId) &&
             b.IsActive &&
+            b.Status == (int)BatchStatus.Active &&
             b.CurrentQuantity > 0);
 
         // Group batches by MedicineId and sum quantities in memory

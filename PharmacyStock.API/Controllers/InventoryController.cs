@@ -91,7 +91,7 @@ public class InventoryController : ControllerBase
 
     [HttpPatch("batches/{id}/quarantine")]
     [Authorize(Policy = PermissionConstants.StockQuarantine)]
-    public async Task<IActionResult> QuarantineBatch(int id, bool quarantine)
+    public async Task<IActionResult> QuarantineBatch(int id, [FromBody] bool quarantine)
     {
         try
         {

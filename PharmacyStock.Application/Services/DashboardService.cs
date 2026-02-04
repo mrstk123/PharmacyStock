@@ -76,7 +76,8 @@ public class DashboardService : IDashboardService
                     BatchNumber = batch.BatchNumber,
                     ExpiryDate = batch.ExpiryDate,
                     DaysRemaining = daysRemaining,
-                    CurrentQuantity = batch.CurrentQuantity
+                    CurrentQuantity = batch.CurrentQuantity,
+                    Message = notification.Message
                 };
             }
             // Handle Medicine (Low Stock) Alerts
@@ -91,7 +92,8 @@ public class DashboardService : IDashboardService
                     BatchNumber = "N/A",
                     ExpiryDate = DateOnly.MinValue,
                     DaysRemaining = 0,
-                    CurrentQuantity = 0
+                    CurrentQuantity = 0,
+                    Message = notification.Message
                 };
             }
 
@@ -203,7 +205,7 @@ public class DashboardService : IDashboardService
         var movements = await _unitOfWork.StockMovements.FindAsync(
             m => true,
             query => query.OrderByDescending(m => m.PerformedAt),
-            m => m.MedicineBatch,
+            m => m.MedicineBatch.Medicine,
             m => m.PerformedByUser
         );
 

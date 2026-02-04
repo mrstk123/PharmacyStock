@@ -32,4 +32,9 @@ public class DashboardBroadcaster : IDashboardBroadcaster
     {
         await _hubContext.Clients.All.SendAsync("Notification", new { message, type, timestamp = DateTime.UtcNow });
     }
+
+    public async Task BroadcastSystemAlert(NotificationDto notification)
+    {
+        await _hubContext.Clients.All.SendAsync("NotificationAdded", notification);
+    }
 }

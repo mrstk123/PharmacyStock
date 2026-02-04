@@ -14,6 +14,7 @@ public class AlertItemDto
     public DateOnly ExpiryDate { get; set; }
     public int DaysRemaining { get; set; }
     public int CurrentQuantity { get; set; }
+    public string? Message { get; set; }
 }
 
 public class InventoryValuationDto

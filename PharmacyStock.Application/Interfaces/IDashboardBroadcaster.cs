@@ -8,4 +8,5 @@ public interface IDashboardBroadcaster
     Task BroadcastAlertsUpdate(DashboardAlertsDto alerts);
     Task BroadcastRecentMovement(RecentMovementDto movement);
     Task BroadcastNotification(string message, string type = "info");
+    Task BroadcastSystemAlert(NotificationDto notification);
 }
