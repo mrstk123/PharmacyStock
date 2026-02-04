@@ -1,0 +1,5 @@
+// SqlServer
+dotnet ef migrations add InitialCreate --context AppDbContext --output-dir Migrations/SqlServer --project PharmacyStock.Infrastructure --startup-project PharmacyStock.API
+
+// PostgreSQL
+dotnet ef migrations add InitialCreate --context AppDbContextPostgres --output-dir Migrations/Postgres --project PharmacyStock.Infrastructure --startup-project PharmacyStock.API

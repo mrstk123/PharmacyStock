@@ -15,12 +15,34 @@ public static class InfrastructureServiceRegistration
     {
         services.AddScoped<Persistence.Interceptors.AuditableEntityInterceptor>();
 
-        services.AddDbContext<AppDbContext>((sp, options) =>
+        var provider = configuration["Provider"];
+
+        if (provider?.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) == true)
         {
-            var interceptor = sp.GetRequiredService<Persistence.Interceptors.AuditableEntityInterceptor>();
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"))
-                   .AddInterceptors(interceptor);
-        });
+            // Register AppDbContextPostgres and make it available as AppDbContext
+            services.AddScoped<AppDbContext>(sp => sp.GetRequiredService<AppDbContextPostgres>());
+
+            services.AddDbContext<AppDbContextPostgres>((sp, options) =>
+            {
+                var interceptor = sp.GetRequiredService<Persistence.Interceptors.AuditableEntityInterceptor>();
+                options.UseNpgsql(
+                    configuration.GetConnectionString("PostgresConnection"),
+                    npgsqlOptions => npgsqlOptions.MigrationsAssembly("PharmacyStock.Infrastructure"))
+                       .AddInterceptors(interceptor);
+            });
+        }
+        else
+        {
+            services.AddDbContext<AppDbContext>((sp, options) =>
+            {
+                var interceptor = sp.GetRequiredService<Persistence.Interceptors.AuditableEntityInterceptor>();
+                options.UseSqlServer(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    sqlServerOptions => sqlServerOptions.MigrationsAssembly("PharmacyStock.Infrastructure"))
+                       .AddInterceptors(interceptor);
+            });
+        }
+
 
         services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();

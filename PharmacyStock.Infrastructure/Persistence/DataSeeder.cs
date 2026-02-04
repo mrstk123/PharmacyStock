@@ -90,13 +90,19 @@ public static class DataSeeder
             {
                 context.Users.AddRange(usersToObject);
 
-                // Allow explicit values for identity column
-                context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users ON");
+                // Allow explicit values for identity column (SQL Server only)
+                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                {
+                    context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users ON");
+                }
 
                 context.SaveChanges();
 
-                // Reset to default behavior
-                context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users OFF");
+                // Reset to default behavior (SQL Server only)
+                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                {
+                    context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users OFF");
+                }
 
                 transaction.Commit();
             }

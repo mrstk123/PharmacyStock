@@ -1,0 +1,58 @@
+using Microsoft.EntityFrameworkCore;
+using PharmacyStock.Domain.Entities;
+
+namespace PharmacyStock.Infrastructure.Persistence.Context;
+
+/// <summary>
+/// PostgreSQL-specific DbContext. Inherits from AppDbContext to reuse all entity configurations.
+/// This allows separate migration histories for PostgreSQL.
+/// </summary>
+public class AppDbContextPostgres : AppDbContext
+{
+    public AppDbContextPostgres(DbContextOptions<AppDbContextPostgres> options)
+        : base(options)
+    {
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Call base to get common entity configurations
+        base.OnModelCreating(modelBuilder);
+
+        // Apply PostgreSQL-specific configurations
+        // Configure xmin for row version
+        modelBuilder.Entity<MedicineBatch>(entity =>
+        {
+            entity.Property(e => e.RowVersion)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .IsConcurrencyToken()
+                .ValueGeneratedOnAddOrUpdate()
+                .HasConversion(
+                    v => 0u,  // Dummy for writing (xmin is read-only)
+                    v => BitConverter.GetBytes(v));  // Convert xmin (uint) to byte[]
+        });
+
+        // Configure all DateTime properties
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                // DateTime to timestamp with time zone
+                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                {
+                    property.SetColumnType("timestamp with time zone");
+                }
+
+                // Convert SQL Server getdate() to PostgreSQL CURRENT_TIMESTAMP
+                if (property.GetDefaultValueSql() == "(getdate())")
+                {
+                    property.SetDefaultValueSql(
+                        property.ClrType == typeof(DateOnly) || property.ClrType == typeof(DateOnly?)
+                            ? "CURRENT_DATE"
+                            : "CURRENT_TIMESTAMP");
+                }
+            }
+        }
+    }
+}

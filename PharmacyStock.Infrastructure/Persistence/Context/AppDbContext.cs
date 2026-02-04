@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PharmacyStock.Domain.Entities;
 
 namespace PharmacyStock.Infrastructure.Persistence.Context;
 
 public partial class AppDbContext : DbContext
 {
+    protected AppDbContext(DbContextOptions options)
+        : base(options)
+    {
+    }
+
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {

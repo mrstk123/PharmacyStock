@@ -9,11 +9,11 @@ using PharmacyStock.Infrastructure.Persistence.Context;
 
 #nullable disable
 
-namespace PharmacyStock.Infrastructure.Migrations
+namespace PharmacyStock.Infrastructure.Migrations.SqlServer
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260204025355_IniitalCreate")]
-    partial class IniitalCreate
+    [Migration("20260204120057_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

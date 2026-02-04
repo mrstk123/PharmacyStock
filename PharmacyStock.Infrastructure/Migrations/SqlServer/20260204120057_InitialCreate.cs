@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace PharmacyStock.Infrastructure.Migrations
+namespace PharmacyStock.Infrastructure.Migrations.SqlServer
 {
     /// <inheritdoc />
-    public partial class IniitalCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
