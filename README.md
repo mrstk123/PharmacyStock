@@ -23,6 +23,7 @@ This system provides complete pharmacy inventory management capabilities includi
 - 🏢 **Supplier Management** - Track suppliers and their medicine catalog
 - 📝 **Audit Trail** - Complete tracking of who changed what and when
 - 🗄️ **Multi-Database Support** - SQL Server and PostgreSQL compatibility
+- 🐳 **Docker Deployment** - Dynamic database provider selection with Docker Compose profiles
 - ⚡ **Redis Caching** - High-performance caching layer for frequently accessed data
 - 📋 **Comprehensive Logging** - Structured logging with Serilog
 
@@ -65,8 +66,8 @@ PharmacyStock.Backend/
 - **Entity Framework Core 10.0** - ORM for database operations
 
 ### Database
-- **SQL Server 2022** - Primary database option
-- **PostgreSQL 17** - Alternative database provider
+- **SQL Server 2022** - Enterprise database option
+- **PostgreSQL 17** - Open-source database (Default)
 - **Redis** - Distributed caching
 
 ### Authentication & Security
@@ -92,6 +93,9 @@ PharmacyStock.Backend/
 ### Utilities
 - **AutoMapper 13.0** - Object-to-object mapping
 
+### Deployment
+- **Docker** - Containerization platform
+- **Docker Compose** - Multi-container orchestration with profile-based database selection
 
 
 ## 📋 Prerequisites
@@ -105,7 +109,7 @@ PharmacyStock.Backend/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd PharmacyStock/Backend
+   cd PharmacyStock
    ```
 
 2. **Configure the database**
@@ -113,7 +117,7 @@ PharmacyStock.Backend/
    Edit `PharmacyStock.API/appsettings.json`:
    ```json
    {
-     "Provider": "SqlServer",  // or "PostgreSQL"
+     "Provider": "PostgreSQL",  // or "SqlServer" 
      "ConnectionStrings": {
        "DefaultConnection": "Server=localhost;Database=PharmacyStockDb;User Id=sa;Password=YourPassword;TrustServerCertificate=true;",
        "PostgresConnection": "Host=localhost;Database=PharmacyStockDb;Username=postgres;Password=YourPassword"
@@ -132,6 +136,95 @@ PharmacyStock.Backend/
 4. **Access the API**
    - API: `https://localhost:7000` or `http://localhost:5041`
    - Swagger UI: `https://localhost:7000/swagger`
+
+## 🐳 Docker Deployment
+
+The application supports Docker deployment with **dynamic database provider selection** using Docker Compose profiles.
+
+### Prerequisites
+- [Docker](https://www.docker.com/get-started)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Quick Start with Docker
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd PharmacyStock
+   ```
+
+2. **Start with PostgreSQL (default)**
+   ```bash
+   docker-compose --profile postgres up -d
+   ```
+
+3. **Access the application**
+   - API: `http://localhost:5000`
+   - Swagger UI: `http://localhost:5000/swagger`
+
+### Environment Configuration
+
+Create a `.env` file for custom configuration:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` to customize database provider and settings:
+
+```env
+# Change database provider (PostgreSQL or SqlServer)
+DB_PROVIDER=PostgreSQL
+
+# Customize passwords and ports as needed
+POSTGRES_PASSWORD=YourSecurePassword
+MSSQL_PASSWORD=YourSecurePassword
+API_PORT=5000
+ASPNETCORE_ENVIRONMENT=Development
+```
+
+**Important:** Use the profile that matches your `DB_PROVIDER`:
+```bash
+# If DB_PROVIDER=PostgreSQL
+docker-compose --profile postgres up -d
+
+# If DB_PROVIDER=SqlServer
+docker-compose --profile mssql up -d
+```
+
+### Switching Database Providers
+
+To switch from one database to another:
+
+```bash
+# Stop and remove current containers
+docker-compose down -v
+
+# Update .env file (edit DB_PROVIDER line)
+sed -i '' 's/DB_PROVIDER=.*/DB_PROVIDER=PostgreSQL/' .env
+
+# Start with new profile
+docker-compose --profile postgres up -d
+```
+
+### Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f pharmacy-api
+
+# Check service health
+docker-compose ps
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (clean slate)
+docker-compose down -v
+
+# Rebuild API image
+docker-compose build pharmacy-api
+```
 
 ## 🔑 Default Credentials
 

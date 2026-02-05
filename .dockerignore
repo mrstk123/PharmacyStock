@@ -1,0 +1,12 @@
+**/.dockerignore
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/*.sln.user
+**/*.user
+**/*.db
+**/*.sql
+**/scaffold.sh

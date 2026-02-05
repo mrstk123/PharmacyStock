@@ -1,0 +1,79 @@
+services:
+  # MSSQL Database (Azure SQL Edge - ARM64 & AMD64 compatible)
+  sql-server:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: pharmacy-sql
+    profiles: [ "mssql" ]
+    environment:
+      - ACCEPT_EULA=1
+      - MSSQL_SA_PASSWORD=${MSSQL_PASSWORD:-SamplePass@2026!}
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "${MSSQL_PASSWORD:-SamplePass@2026!}" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: pharmacy-postgres
+    profiles: [ "postgres" ]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-SamplePass@2026!}
+      - POSTGRES_DB=${POSTGRES_DB:-PharmacyStockDb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: pharmacy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Pharmacy Stock API
+  pharmacy-api:
+    image: pharmacy-stock-api
+    container_name: pharmacy-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_URLS=http://+:80
+      - Provider=${DB_PROVIDER:-PostgreSQL}
+      - ConnectionStrings__DefaultConnection=${MSSQL_CONNECTION:-Server=sql-server;Database=PharmacyStockDb;User Id=sa;Password=SamplePass@2026!;TrustServerCertificate=true;}
+      - ConnectionStrings__PostgresConnection=${POSTGRES_CONNECTION:-Host=postgres;Database=PharmacyStockDb;Username=postgres;Password=SamplePass@2026!}
+      - ConnectionStrings__RedisConnection=${REDIS_CONNECTION:-redis:6379}
+    ports:
+      - "${API_PORT:-5000}:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mssql-data:
+  postgres-data:
+  redis-data:

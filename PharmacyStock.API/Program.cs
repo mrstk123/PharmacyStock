@@ -5,6 +5,7 @@ using PharmacyStock.Infrastructure;
 using Serilog;
 using Microsoft.EntityFrameworkCore;
 using PharmacyStock.Application;
+using Microsoft.OpenApi;
 
 // Configure Serilog early to catch startup errors
 Log.Logger = new LoggerConfiguration()
@@ -49,7 +50,27 @@ try
     // builder.Services.AddOpenApi(); // Generates OpenAPI JSON
     // Swagger UI
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "Pharmacy Stock API",
+            Version = "v1"
+        });
+
+        // Note: Bearer OpenApiSecurityScheme is unnecessary because the API uses HTTP-only cookies for authentication.
+        // options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+        // {
+        //     Type = SecuritySchemeType.Http,
+        //     Scheme = "bearer",
+        //     BearerFormat = "JWT",
+        //     Description = "JWT Authorization header using the Bearer scheme."
+        // });
+        // options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+        // {
+        //     [new OpenApiSecuritySchemeReference("bearer", document)] = []
+        // });
+    });
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -129,6 +150,9 @@ try
 
     app.MapControllers();
     app.MapHub<PharmacyStock.API.Hubs.DashboardHub>("/hubs/dashboard");
+
+    // Healthcheck endpoint for Replit
+    app.MapGet("/", () => Results.Ok(new { status = "healthy", message = "Pharmacy Stock API is running" }));
 
 
     // Seed Data
