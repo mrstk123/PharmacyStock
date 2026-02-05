@@ -181,6 +181,7 @@ POSTGRES_PASSWORD=YourSecurePassword
 MSSQL_PASSWORD=YourSecurePassword
 API_PORT=5000
 ASPNETCORE_ENVIRONMENT=Development
+CLIENT_APP_URL=http://localhost:4200
 ```
 
 **Important:** Use the profile that matches your `DB_PROVIDER`:

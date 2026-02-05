@@ -62,6 +62,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ASPNETCORE_URLS=http://+:80
+      - ClientAppUrl=${CLIENT_APP_URL:-http://localhost:4200}
       - Provider=${DB_PROVIDER:-PostgreSQL}
       - ConnectionStrings__DefaultConnection=${MSSQL_CONNECTION:-Server=sql-server;Database=PharmacyStockDb;User Id=sa;Password=SamplePass@2026!;TrustServerCertificate=true;}
       - ConnectionStrings__PostgresConnection=${POSTGRES_CONNECTION:-Host=postgres;Database=PharmacyStockDb;Username=postgres;Password=SamplePass@2026!}
