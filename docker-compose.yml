@@ -64,8 +64,8 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - ClientAppUrl=${CLIENT_APP_URL:-http://localhost:4200}
       - Provider=${DB_PROVIDER:-PostgreSQL}
-      - ConnectionStrings__DefaultConnection=${MSSQL_CONNECTION:-Server=sql-server;Database=PharmacyStockDb;User Id=sa;Password=SamplePass@2026!;TrustServerCertificate=true;}
-      - ConnectionStrings__PostgresConnection=${POSTGRES_CONNECTION:-Host=postgres;Database=PharmacyStockDb;Username=postgres;Password=SamplePass@2026!}
+      - ConnectionStrings__DefaultConnection=Server=sql-server;Database=PharmacyStockDb;User Id=sa;Password=${MSSQL_PASSWORD:-SamplePass@2026!};TrustServerCertificate=true;
+      - ConnectionStrings__PostgresConnection=Host=postgres;Database=${POSTGRES_DB:-PharmacyStockDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-SamplePass@2026!}
       - ConnectionStrings__RedisConnection=${REDIS_CONNECTION:-redis:6379}
     ports:
       - "${API_PORT:-5000}:80"
