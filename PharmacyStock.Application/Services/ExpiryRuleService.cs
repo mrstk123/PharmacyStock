@@ -20,13 +20,13 @@ public class ExpiryRuleService : IExpiryRuleService
 
     public async Task<List<ExpiryRuleDto>> GetExpiryRulesAsync()
     {
-        var rules = await _unitOfWork.ExpiryRules.FindAsync(r => true);
+        var rules = await _unitOfWork.ExpiryRules.FindAsync(r => true, r => r.Category!);
         return _mapper.Map<List<ExpiryRuleDto>>(rules);
     }
 
     public async Task<ExpiryRuleDto> GetExpiryRuleByIdAsync(int id)
     {
-        var rule = await _unitOfWork.ExpiryRules.GetByIdAsync(id)
+        var rule = await _unitOfWork.ExpiryRules.GetByIdAsync(id, r => r.Category!)
             ?? throw new Exception("Expiry Rule not found");
 
         return _mapper.Map<ExpiryRuleDto>(rule);
