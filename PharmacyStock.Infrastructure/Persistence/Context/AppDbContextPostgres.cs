@@ -20,19 +20,21 @@ public class AppDbContextPostgres : AppDbContext
         base.OnModelCreating(modelBuilder);
 
         // Apply PostgreSQL-specific configurations
-        // Configure xmin for row version
         modelBuilder.Entity<MedicineBatch>(entity =>
         {
+            // RowVersion is NOT a concurrency token and optional in Postgres
             entity.Property(e => e.RowVersion)
+                .IsConcurrencyToken(false)
+                .IsRequired(false);
+
+            // Use the native Postgres 'xmin' for actual concurrency
+            entity.Property<uint>("xmin")
                 .HasColumnName("xmin")
                 .HasColumnType("xid")
-                .IsConcurrencyToken()
                 .ValueGeneratedOnAddOrUpdate()
-                .HasConversion(
-                    v => 0u,  // Dummy for writing (xmin is read-only)
-                    v => BitConverter.GetBytes(v));  // Convert xmin (uint) to byte[]
+                .IsConcurrencyToken();
         });
-
+        
         // Configure all DateTime properties
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

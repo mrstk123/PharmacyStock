@@ -218,12 +218,13 @@ namespace PharmacyStock.Infrastructure.Migrations.Postgres
                     PurchasePrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     SellingPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "bytea", nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
                     CreatedBy = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true)
+                    UpdatedBy = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

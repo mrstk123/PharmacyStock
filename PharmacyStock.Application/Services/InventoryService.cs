@@ -599,7 +599,7 @@ public class InventoryService : IInventoryService
             });
 
             remainingToDispense -= quantityFromBatch;
-            _unitOfWork.MedicineBatches.Update(batch);
+            //_unitOfWork.MedicineBatches.Update(batch); // No need bez of tracking
         }
 
         foreach (var movement in movements)
@@ -701,7 +701,7 @@ public class InventoryService : IInventoryService
             PerformedByUserId = _currentUserService.GetCurrentUserId() ?? SystemConstants.SystemUserId
         };
 
-        _unitOfWork.MedicineBatches.Update(batch);
+        //_unitOfWork.MedicineBatches.Update(batch); // No need bez of tracking
         await _unitOfWork.StockMovements.AddAsync(movement);
         await _unitOfWork.SaveAsync();
 

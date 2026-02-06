@@ -232,11 +232,9 @@ namespace PharmacyStock.Infrastructure.Migrations.Postgres
                         .HasColumnType("date")
                         .HasDefaultValueSql("CURRENT_DATE");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
+                    b.Property<byte[]>("RowVersion")
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                        .HasColumnType("bytea");
 
                     b.Property<decimal>("SellingPrice")
                         .HasColumnType("decimal(18, 2)");
@@ -253,6 +251,12 @@ namespace PharmacyStock.Infrastructure.Migrations.Postgres
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

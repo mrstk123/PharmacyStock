@@ -25,7 +25,7 @@ public class SupplierService : ISupplierService
     public async Task<IEnumerable<SupplierDto>> GetAllSuppliersAsync(bool? isActive = null)
     {
         var cachedResult = await _cache.GetAsync<List<SupplierDto>>(CacheKeyBuilder.AllSuppliers());
-        if (cachedResult != null)
+        if (cachedResult is { Count: > 0 })
         {
             return FilterSuppliers(cachedResult, isActive);
         }
