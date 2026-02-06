@@ -97,8 +97,8 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !_environment.IsDevelopment(), // False in Dev (HTTP), True in Prod (HTTPS)
-            SameSite = _environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None, // Lax for Dev (localhost ports are SameSite), None for Prod (Cross-domain)
+            Secure = true,
+            SameSite = SameSiteMode.None
         };
 
         if (isPersistent)
@@ -116,8 +116,8 @@ public class AuthController : ControllerBase
         var refreshCookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !_environment.IsDevelopment(),
-            SameSite = _environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None
+            Secure = true,
+            SameSite = SameSiteMode.None
         };
 
         if (isPersistent)
