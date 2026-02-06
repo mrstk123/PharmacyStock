@@ -117,7 +117,7 @@ PharmacyStock.Backend/
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [SQL Server 2022](https://www.microsoft.com/sql-server) or [PostgreSQL 17](https://www.postgresql.org/)
-- [Redis](https://redis.io/) (optional, for caching)
+- [Redis](https://redis.io/)
 
 ## 🚀 Getting Started
 
@@ -135,7 +135,8 @@ PharmacyStock.Backend/
      "Provider": "PostgreSQL",  // or "SqlServer" 
      "ConnectionStrings": {
        "DefaultConnection": "Server=localhost;Database=PharmacyStockDb;User Id=sa;Password=YourPassword;TrustServerCertificate=true;",
-       "PostgresConnection": "Host=localhost;Database=PharmacyStockDb;Username=postgres;Password=YourPassword"
+       "PostgresConnection": "Host=localhost;Database=PharmacyStockDb;Username=postgres;Password=YourPassword",
+       "RedisConnection": "localhost:6379"
      }
    }
    ```
