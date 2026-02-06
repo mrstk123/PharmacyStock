@@ -7,6 +7,17 @@ A comprehensive pharmacy inventory management system built with **ASP.NET Core 1
 ![Entity Framework Core](https://img.shields.io/badge/EF%20Core-10.0-512BD4?style=flat)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
+## 🌐 Live Demo
+
+🚀 **Live Application:** [https://pharmacystock.vercel.app/](https://pharmacystock.vercel.app/)
+
+### 🔑 Demo Credentials
+
+| Role | Username | Password |
+|------|----------|----------|
+| **Admin** | `admin` | `Admin@123` |
+| **Pharmacist** | `pharmacist` | `Pharmacist@123` |
+
 ## 🎯 Project Overview
 
 This system provides complete pharmacy inventory management capabilities including medicine tracking, stock movements, expiry monitoring, supplier management, and real-time dashboard updates.
@@ -26,6 +37,10 @@ This system provides complete pharmacy inventory management capabilities includi
 - 🐳 **Docker Deployment** - Dynamic database provider selection with Docker Compose profiles
 - ⚡ **Redis Caching** - High-performance caching layer for frequently accessed data
 - 📋 **Comprehensive Logging** - Structured logging with Serilog
+
+### 🔗 Related Repositories
+
+- [**Frontend Repository (Angular)**](https://github.com/mrstk123/PharmacyStock.Client)
 
 ## 🏗️ Architecture
 
@@ -137,6 +152,22 @@ PharmacyStock.Backend/
    - API: `https://localhost:7000` or `http://localhost:5041`
    - Swagger UI: `https://localhost:7000/swagger`
 
+5. **Login with Default Credentials**
+
+   The system seeds default users for initial access:
+
+   - **Admin User**
+     - Username: `admin`
+     - Password: `Admin@123`
+     - Role: Administrator with full access
+
+   - **Pharmacist User**
+     - Username: `pharmacist`
+     - Password: `Pharmacist@123`
+     - Role: Pharmacist with limited access
+
+   > ⚠️ **Important**: Change these passwords in production!
+
 ## 🐳 Docker Deployment
 
 The application supports Docker deployment with **dynamic database provider selection** using Docker Compose profiles.
@@ -227,69 +258,11 @@ docker-compose down -v
 docker-compose build pharmacy-api
 ```
 
-## 🔑 Default Credentials
+## 📡 API Documentation
 
-After initial setup, the system seeds default users:
+Comprehensive API documentation is available via **Swagger/OpenAPI**.
 
-- **Admin User**
-  - Username: `admin`
-  - Password: `Admin@123`
-  - Role: Administrator with full access
-
-- **Pharmacist User**
-  - Username: `pharmacist`
-  - Password: `Pharmacist@123`
-  - Role: Pharmacist with limited access
-
-> ⚠️ **Important**: Change these passwords in production!
-
-## 📡 API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `POST /api/auth/refresh-token` - Refresh access token
-
-### Users & Roles
-- `GET /api/users` - List all users
-- `POST /api/users` - Create new user
-- `PUT /api/users/{id}` - Update user
-- `DELETE /api/users/{id}` - Delete user
-- `GET /api/roles` - List all roles
-- `POST /api/roles` - Create new role
-
-### Medicines
-- `GET /api/medicines` - List all medicines
-- `GET /api/medicines/{id}` - Get medicine details
-- `POST /api/medicines` - Create new medicine
-- `PUT /api/medicines/{id}` - Update medicine
-- `DELETE /api/medicines/{id}` - Delete medicine
-
-### Inventory
-- `GET /api/inventory` - Get current stock levels
-- `GET /api/inventory/low-stock` - Get low stock items
-- `GET /api/inventory/expiring-soon` - Get expiring medicines
-
-### Stock Operations
-- `POST /api/stock-operations/receive` - Receive stock
-- `POST /api/stock-operations/dispense` - Dispense medicine
-- `POST /api/stock-operations/adjust` - Adjust stock levels
-- `POST /api/stock-operations/transfer` - Transfer between locations
-
-### Dashboard
-- `GET /api/dashboard/summary` - Get dashboard statistics
-- `GET /api/dashboard/recent-activities` - Get recent stock movements
-
-### Suppliers
-- `GET /api/suppliers` - List all suppliers
-- `POST /api/suppliers` - Create new supplier
-- `PUT /api/suppliers/{id}` - Update supplier
-
-### Notifications
-- `GET /api/notifications` - Get user notifications
-- `PUT /api/notifications/{id}/read` - Mark notification as read
-
-For complete API documentation, visit the Swagger UI at `/swagger`.
+- **Swagger UI**: Visit `/swagger` (e.g., `https://localhost:7000/swagger`) when running the app to explore and test endpoints.
 
 ## 🔌 SignalR Hubs
 
