@@ -50,7 +50,7 @@ public class InventoryController : ControllerBase
     public async Task<ActionResult<MedicineBatchDto>> CheckBatch([FromQuery] int medicineId, [FromQuery] string batchNumber)
     {
         var batch = await _inventoryService.GetBatchByNumberAsync(medicineId, batchNumber);
-        if (batch == null) return NotFound();
+        // Return 200 OK with null when batch doesn't exist (not 404)
         return Ok(batch);
     }
 
