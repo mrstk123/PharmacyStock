@@ -53,6 +53,9 @@ public class MappingProfile : Profile
         // Role Mappings
         CreateMap<Role, RoleDto>()
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? string.Empty));
+        CreateMap<CreateRoleDto, Role>()
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive ?? true))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow));
 
         // Permission Mappings
         CreateMap<Permission, PermissionDto>()

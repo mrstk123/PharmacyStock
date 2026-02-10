@@ -85,31 +85,40 @@ public static class DataSeeder
 
         if (usersToObject.Count > 0)
         {
-            using var transaction = context.Database.BeginTransaction();
-            try
+            // Only use transactions for relational databases
+            // In-Memory database (used for testing) does not support transactions
+            if (context.Database.IsRelational())
             {
-                context.Users.AddRange(usersToObject);
-
-                // Allow explicit values for identity column (SQL Server only)
-                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                using var transaction = context.Database.BeginTransaction();
+                try
                 {
-                    context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users ON");
+                    context.Users.AddRange(usersToObject);
+
+                    if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                    {
+                        context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users ON");
+                    }
+
+                    context.SaveChanges();
+
+                    if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                    {
+                        context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users OFF");
+                    }
+
+                    transaction.Commit();
                 }
-
-                context.SaveChanges();
-
-                // Reset to default behavior (SQL Server only)
-                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                catch
                 {
-                    context.Database.ExecuteSqlRaw("SET IDENTITY_INSERT dbo.Users OFF");
+                    transaction.Rollback();
+                    throw;
                 }
-
-                transaction.Commit();
             }
-            catch
+            else
             {
-                transaction.Rollback();
-                throw;
+                // For Non-Relational (InMemory), just save
+                context.Users.AddRange(usersToObject);
+                context.SaveChanges();
             }
         }
     }

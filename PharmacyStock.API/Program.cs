@@ -159,7 +159,14 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<PharmacyStock.Infrastructure.Persistence.Context.AppDbContext>();
-        context.Database.Migrate(); // Automatically apply migrations
+        if (context.Database.IsRelational())
+        {
+            context.Database.Migrate(); // Automatically apply migrations
+        }
+        else
+        {
+            context.Database.EnsureCreated();
+        }
         PharmacyStock.Infrastructure.Persistence.DataSeeder.SeedUsers(context);
         PharmacyStock.Infrastructure.Persistence.DataSeeder.SeedPermissions(context);
     }

@@ -37,6 +37,7 @@ This system provides complete pharmacy inventory management capabilities includi
 - 🐳 **Docker Deployment** - Dynamic database provider selection with Docker Compose profiles
 - ⚡ **Redis Caching** - High-performance caching layer for frequently accessed data
 - 📋 **Comprehensive Logging** - Structured logging with Serilog
+- 🧪 **Robust Testing Suite** - Full unit and integration test coverage with xUnit
 
 ### 🔗 Related Repositories
 
@@ -146,8 +147,6 @@ PharmacyStock.Backend/
    cd PharmacyStock.API
    dotnet run
    ```
-   
-   > **Note**: Database migrations are automatically applied on startup, and default users are seeded.
 
 4. **Access the API**
    - API: `https://localhost:7000` or `http://localhost:5041`
@@ -166,9 +165,6 @@ PharmacyStock.Backend/
      - Username: `pharmacist`
      - Password: `Pharmacist@123`
      - Role: Pharmacist with limited access
-
-   > ⚠️ **Important**: Change these passwords in production!
-
 ## 🐳 Docker Deployment
 
 The application supports Docker deployment with **dynamic database provider selection** using Docker Compose profiles.
@@ -288,6 +284,44 @@ dotnet ef database update --context AppDbContext --project PharmacyStock.Infrast
 ```bash
 dotnet ef migrations add MigrationName --context AppDbContextPostgres --output-dir Migrations/Postgres --project PharmacyStock.Infrastructure --startup-project PharmacyStock.API
 dotnet ef database update --context AppDbContextPostgres --project PharmacyStock.Infrastructure --startup-project PharmacyStock.API
+```
+
+## 🧪 Testing
+
+The solution includes comprehensive unit and integration tests following the Clean Architecture structure:
+
+### Test Projects
+
+- **PharmacyStock.Application.Tests**
+  - **Type**: Unit Tests
+  - **Focus**: Business logic, Services, Validators, Mappings
+  - **Tools**: xUnit, Moq, FluentAssertions
+  - **Coverage**: High coverage of the service methods
+
+- **PharmacyStock.API.Tests**
+  - **Type**: Integration Tests
+  - **Focus**: Controllers, Middleware, Auth Flow, HTTP Responses
+  - **Tools**: WebApplicationFactory (TestServer), FakePolicyEvaluator
+  - **Database**: In-Memory Database (isolated per test class)
+
+- **PharmacyStock.Infrastructure.Tests**
+  - **Type**: Infrastructure Tests
+  - **Focus**: DateServices, External Integrations
+  - **Tools**: xUnit, FluentAssertions
+
+### Running Tests
+
+Execute all tests from the backend directory:
+
+```bash
+cd PharmacyStock.Backend
+dotnet test
+```
+
+Or run a specific project:
+
+```bash
+dotnet test PharmacyStock.Application.Tests
 ```
 
 ## 📊 Project Statistics
