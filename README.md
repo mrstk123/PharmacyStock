@@ -124,7 +124,7 @@ PharmacyStock.Backend/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mrstk123/PharmacyStock.git
+   git clone <repository-url>
    cd PharmacyStock
    ```
 
