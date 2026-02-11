@@ -6,6 +6,7 @@ using Serilog;
 using Microsoft.EntityFrameworkCore;
 using PharmacyStock.Application;
 using Microsoft.OpenApi;
+using Microsoft.AspNetCore.HttpOverrides;
 
 // Configure Serilog early to catch startup errors
 Log.Logger = new LoggerConfiguration()
@@ -41,6 +42,14 @@ try
                       .AllowAnyMethod()
                       .AllowCredentials();
             });
+    });
+
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
     });
 
     // Add SignalR
@@ -138,6 +147,7 @@ try
     app.UseMiddleware<PharmacyStock.API.Middleware.GlobalExceptionMiddleware>();
     app.UseMiddleware<PharmacyStock.API.Middleware.PerformanceMiddleware>();
 
+    app.UseForwardedHeaders();
     app.UseHttpsRedirection();
 
     app.UseCors("AllowAngular");
