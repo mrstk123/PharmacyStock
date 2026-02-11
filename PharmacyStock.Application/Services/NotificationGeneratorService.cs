@@ -80,22 +80,33 @@ public class NotificationGeneratorService : INotificationGeneratorService
             // Critical expiry (within critical days threshold)
             if (daysUntilExpiry > 0 && daysUntilExpiry <= rule.CriticalDays)
             {
-                // Check if system alert already exists for this batch today
+                // Check if unresolved system alert already exists for this batch
                 var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
                     n.IsSystemAlert &&
                     n.RelatedEntityId == batch.Id &&
                     n.RelatedEntityType == "Batch" &&
                     n.Type == NotificationType.Critical &&
-                    n.CreatedAt.Date == DateTime.UtcNow.Date);
+                    !n.IsActionTaken);
 
-                if (!existingAlerts.Any())
+                var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.";
+
+                if (existingAlerts.Any())
                 {
+                    // Update existing notification with current information
+                    var existingNotification = existingAlerts.First();
+                    existingNotification.Message = currentMessage;
+                    existingNotification.IsRead = false; // Mark as unread to notify user of update
+                    _unitOfWork.Notifications.Update(existingNotification);
+                }
+                else
+                {
+                    // Create new notification
                     notifications.Add(new Notification
                     {
                         UserId = null, // System-wide alert
                         IsSystemAlert = true,
                         Title = "Critical Expiry Alert",
-                        Message = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.",
+                        Message = currentMessage,
                         Type = NotificationType.Critical,
                         Priority = 5,
                         IsRead = false,
@@ -110,22 +121,33 @@ public class NotificationGeneratorService : INotificationGeneratorService
             // Warning expiry (within warning days threshold but not critical)
             else if (daysUntilExpiry > rule.CriticalDays && daysUntilExpiry <= rule.WarningDays)
             {
-                // Check if system alert already exists for this batch today
+                // Check if unresolved system alert already exists for this batch
                 var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
                     n.IsSystemAlert &&
                     n.RelatedEntityId == batch.Id &&
                     n.RelatedEntityType == "Batch" &&
                     n.Type == NotificationType.Warning &&
-                    n.CreatedAt.Date == DateTime.UtcNow.Date);
+                    !n.IsActionTaken);
 
-                if (!existingAlerts.Any())
+                var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.";
+
+                if (existingAlerts.Any())
                 {
+                    // Update existing notification with current information
+                    var existingNotification = existingAlerts.First();
+                    existingNotification.Message = currentMessage;
+                    existingNotification.IsRead = false; // Mark as unread to notify user of update
+                    _unitOfWork.Notifications.Update(existingNotification);
+                }
+                else
+                {
+                    // Create new notification
                     notifications.Add(new Notification
                     {
                         UserId = null, // System-wide alert
                         IsSystemAlert = true,
                         Title = "Expiry Warning",
-                        Message = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.",
+                        Message = currentMessage,
                         Type = NotificationType.Warning,
                         Priority = 3,
                         IsRead = false,
@@ -202,36 +224,48 @@ public class NotificationGeneratorService : INotificationGeneratorService
             var medicine = stock.Medicine;
             if (medicine == null) continue;
 
-            // Check if system alert already exists for this medicine today
+            // Check if unresolved system alert already exists for this medicine
             var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
                 n.IsSystemAlert &&
                 n.RelatedEntityId == medicine.Id &&
                 n.RelatedEntityType == "Medicine" &&
                 n.Type == NotificationType.StockAlert &&
-                n.CreatedAt.Date == DateTime.UtcNow.Date);
+                !n.IsActionTaken);
 
-            if (!existingAlerts.Any())
+            // Priority calculation based on percentage of threshold
+            // - Out of stock (0) = Priority 5 (Critical)
+            // - Below 50% of threshold = Priority 4 (High)
+            // - Above 50% but below threshold = Priority 3 (Warning)
+            var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockAlertThresholds.CriticalPercentage);
+            var priority = stock.TotalQty == 0
+                ? SystemConstants.StockAlertThresholds.Priority.OutOfStock
+                : stock.TotalQty < criticalLevel
+                    ? SystemConstants.StockAlertThresholds.Priority.Critical
+                    : SystemConstants.StockAlertThresholds.Priority.Warning;
+            var title = stock.TotalQty == 0 ? "Out of Stock" : "Low Stock Alert";
+            var currentMessage = stock.TotalQty == 0
+                ? $"{medicine.Name} is out of stock. Immediate reorder required."
+                : $"{medicine.Name} is low on stock. Current quantity: {stock.TotalQty} units.";
+
+            if (existingAlerts.Any())
             {
-                // Priority calculation based on percentage of threshold
-                // - Out of stock (0) = Priority 5 (Critical)
-                // - Below 50% of threshold = Priority 4 (High)
-                // - Above 50% but below threshold = Priority 3 (Warning)
-                var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockAlertThresholds.CriticalPercentage);
-                var priority = stock.TotalQty == 0
-                    ? SystemConstants.StockAlertThresholds.Priority.OutOfStock
-                    : stock.TotalQty < criticalLevel
-                        ? SystemConstants.StockAlertThresholds.Priority.Critical
-                        : SystemConstants.StockAlertThresholds.Priority.Warning;
-                var title = stock.TotalQty == 0 ? "Out of Stock" : "Low Stock Alert";
-
+                // Update existing notification with current information
+                var existingNotification = existingAlerts.First();
+                existingNotification.Message = currentMessage;
+                existingNotification.Title = title;
+                existingNotification.Priority = priority;
+                existingNotification.IsRead = false; // Mark as unread to notify user of update
+                _unitOfWork.Notifications.Update(existingNotification);
+            }
+            else
+            {
+                // Create new notification
                 notifications.Add(new Notification
                 {
                     UserId = null, // System-wide alert
                     IsSystemAlert = true,
                     Title = title,
-                    Message = stock.TotalQty == 0
-                        ? $"{medicine.Name} is out of stock. Immediate reorder required."
-                        : $"{medicine.Name} is low on stock. Current quantity: {stock.TotalQty} units.",
+                    Message = currentMessage,
                     Type = NotificationType.StockAlert,
                     Priority = priority,
                     IsRead = false,
@@ -293,23 +327,33 @@ public class NotificationGeneratorService : INotificationGeneratorService
             var medicine = batch.Medicine;
             if (medicine == null) continue;
 
-            // Check if system alert already exists for this batch today
+            // Check if unresolved system alert already exists for this batch
             var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
                 n.IsSystemAlert &&
                 n.RelatedEntityId == batch.Id &&
                 n.RelatedEntityType == "ExpiredBatch" &&
-                n.CreatedAt.Date == DateTime.UtcNow.Date);
+                !n.IsActionTaken);
 
-            if (!existingAlerts.Any())
+            var daysExpired = today.DayNumber - batch.ExpiryDate.DayNumber;
+            var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expired {daysExpired} days ago. Quantity: {batch.CurrentQuantity} units. Requires proper disposal.";
+
+            if (existingAlerts.Any())
             {
-                var daysExpired = today.DayNumber - batch.ExpiryDate.DayNumber;
-
+                // Update existing notification with current information
+                var existingNotification = existingAlerts.First();
+                existingNotification.Message = currentMessage;
+                existingNotification.IsRead = false; // Mark as unread to notify user of update
+                _unitOfWork.Notifications.Update(existingNotification);
+            }
+            else
+            {
+                // Create new notification
                 notifications.Add(new Notification
                 {
                     UserId = null, // System-wide alert
                     IsSystemAlert = true,
                     Title = "Expired Stock - Disposal Required",
-                    Message = $"{medicine.Name} (Batch {batch.BatchNumber}) expired {daysExpired} days ago. Quantity: {batch.CurrentQuantity} units. Requires proper disposal.",
+                    Message = currentMessage,
                     Type = NotificationType.Critical,
                     Priority = 5,
                     IsRead = false,
