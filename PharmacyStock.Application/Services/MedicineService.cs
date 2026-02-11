@@ -85,11 +85,12 @@ public class MedicineService : IMedicineService
 
     public async Task<IEnumerable<MedicineDto>> SearchMedicinesAsync(string query, bool? isActive = null, string? sortField = null, int? sortOrder = null)
     {
-        // Use eager loading for search too
+        // Use eager loading for search too - case-insensitive search
+        var queryLower = query.ToLower();
         var medicines = await _unitOfWork.Medicines.FindAsync(m =>
-            m.MedicineCode.Contains(query) ||
-            m.Name.Contains(query) ||
-            (m.GenericName != null && m.GenericName.Contains(query)),
+            m.MedicineCode.ToLower().Contains(queryLower) ||
+            m.Name.ToLower().Contains(queryLower) ||
+            (m.GenericName != null && m.GenericName.ToLower().Contains(queryLower)),
             m => m.Category);
 
         if (isActive.HasValue)

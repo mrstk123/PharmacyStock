@@ -101,12 +101,12 @@ public class DashboardService : IDashboardService
             {
                 // Classify based on Type or Priority
                 if (notification.Type == NotificationType.Critical ||
-                   (notification.Type == NotificationType.StockAlert && notification.Priority >= 5))
+                   (notification.Type == NotificationType.StockAlert && notification.Priority >= 4))
                 {
                     alerts.Critical.Add(alertItem);
                 }
                 else if (notification.Type == NotificationType.Warning ||
-                        (notification.Type == NotificationType.StockAlert && notification.Priority < 5))
+                        (notification.Type == NotificationType.StockAlert && notification.Priority < 4))
                 {
                     alerts.Warning.Add(alertItem);
                 }
