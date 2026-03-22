@@ -19,3 +19,6 @@ public interface IUnitOfWork : IDisposable
 
     Task<int> SaveAsync(CancellationToken cancellationToken = default);
 }
+
+// Should place IGenericRepository and IUnitOfWork under Domain project because If the interface references Domain entities → it belongs in Domain.
+// Moving them to Application makes more sense when You follow strict DDD where Domain has no repository abstractions.
