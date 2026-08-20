@@ -59,13 +59,13 @@ public class AuthService : IAuthService
         return response;
     }
 
-    public async Task<LoginResponseDto?> RefreshTokenAsync(RefreshTokenDto refreshTokenRequest)
+    public async Task<LoginResponseDto> RefreshTokenAsync(RefreshTokenDto refreshTokenRequest)
     {
         // Validate the expired access token to extract userId and isPersistent
         var tokenInfo = _jwtProvider.ValidateExpiredAccessToken(refreshTokenRequest.AccessToken);
         if (tokenInfo == null)
         {
-            return null; // Invalid access token
+            throw new Exception("ValidateExpiredAccessToken returned null.");
         }
 
         var (userId, isPersistent) = tokenInfo.Value;
@@ -74,9 +74,13 @@ public class AuthService : IAuthService
         var users = await _unitOfWork.Users.FindAsync(u => u.Id == userId && u.RefreshToken == refreshTokenRequest.RefreshToken && u.IsActive, u => u.Role);
         var user = users.FirstOrDefault();
 
-        if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        if (user == null)
         {
-            return null;
+            throw new Exception("User not found or refresh token mismatch.");
+        }
+        if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        {
+            throw new Exception($"Refresh token expired. Expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
         }
 
         var roleName = user.Role?.Name ?? string.Empty;

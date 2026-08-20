@@ -17,11 +17,11 @@ public class DashboardController : ControllerBase
         _dashboardService = dashboardService;
     }
 
-    [HttpGet("alerts")]
+    [HttpGet("action-items")]
     [Authorize(Policy = PermissionConstants.DashboardView)]
-    public async Task<ActionResult<DashboardAlertsDto>> GetAlerts()
+    public async Task<ActionResult<DashboardActionItemsDto>> GetActionItems()
     {
-        var result = await _dashboardService.GetAlertsAsync();
+        var result = await _dashboardService.GetActionItemsAsync();
         return Ok(result);
     }
 
@@ -43,9 +43,9 @@ public class DashboardController : ControllerBase
 
     [HttpGet("low-stock")]
     [Authorize(Policy = PermissionConstants.DashboardView)]
-    public async Task<ActionResult<List<LowStockAlertDto>>> GetLowStock([FromQuery] int threshold = 50)
+    public async Task<ActionResult<List<LowStockIssueDto>>> GetLowStock([FromQuery] int threshold = 50)
     {
-        var result = await _dashboardService.GetLowStockAlertsAsync(threshold);
+        var result = await _dashboardService.GetLowStockIssuesAsync(threshold);
         return Ok(result);
     }
 

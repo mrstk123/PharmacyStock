@@ -77,17 +77,21 @@ public class JwtProvider : IJwtProvider
 
             var principal = tokenHandler.ValidateToken(accessToken, validationParameters, out _);
 
-            var userIdClaim = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userIdClaim = principal.FindFirst("id")?.Value 
+                              ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                              ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             var isPersistentClaim = principal.FindFirst("isPersistent")?.Value;
 
-            if (userIdClaim == null || isPersistentClaim == null)
-                return null;
+            if (userIdClaim == null)
+                throw new Exception("userIdClaim (Sub/NameIdentifier/id) is missing from token.");
+            if (isPersistentClaim == null)
+                throw new Exception("isPersistentClaim is missing from token.");
 
             return (int.Parse(userIdClaim), bool.Parse(isPersistentClaim));
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new Exception($"Token validation failed: {ex.Message}");
         }
     }
 }

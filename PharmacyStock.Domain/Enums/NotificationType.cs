@@ -23,10 +23,10 @@ public enum NotificationType
     /// <summary>
     /// Stock-related notifications (low stock, out of stock)
     /// </summary>
-    StockAlert = 3,
+    StockIssue = 3,
 
     /// <summary>
     /// Expiry-related notifications
     /// </summary>
-    ExpiryAlert = 4
+    // ExpiryIssue = 4
 }

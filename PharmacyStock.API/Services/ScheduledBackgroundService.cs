@@ -40,9 +40,9 @@ public class ScheduledBackgroundService : BackgroundService
                 var hasRunToday = lastRun == today;
 
                 // Run if we haven't run today AND it is past the scheduled time
-                if (!hasRunToday && DateTime.Now.TimeOfDay >= _scheduledTime)
+                if (!hasRunToday && DateTime.UtcNow.TimeOfDay >= _scheduledTime)
                 {
-                    _logger.LogInformation("Running scheduled tasks at {Time} (Scheduled: {ScheduledTime})", DateTime.Now, _scheduledTime);
+                    _logger.LogInformation("Running scheduled tasks at {Time} (Scheduled: {ScheduledTime})", DateTime.UtcNow, _scheduledTime);
                     await RunScheduledTasksAsync(stoppingToken);
 
                     // Mark as run for today in cache (expire in 26 hours)

@@ -8,6 +8,7 @@ using PharmacyStock.Domain.Constants;
 using PharmacyStock.Domain.Entities;
 using PharmacyStock.Domain.Enums;
 using PharmacyStock.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace PharmacyStock.Application.Services;
 
@@ -169,7 +170,7 @@ public class InventoryService : IInventoryService
         if (totalStock >= lowStockThreshold)
         {
             // Resolve "Low Stock Alert" (Warning) and "Out of Stock" (Critical)
-            await _notificationService.ResolveActionAsync(createBatchDto.MedicineId, "Medicine", NotificationType.StockAlert);
+            await _notificationService.ResolveActionAsync(createBatchDto.MedicineId, "Medicine", NotificationType.StockIssue);
         }
 
         var dto = await GetBatchByIdAsync(batch.Id) ?? throw new Exception("Failed to process batch");
@@ -213,13 +214,16 @@ public class InventoryService : IInventoryService
                 severity = "warning";
             }
 
+            var todayUtc = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+            var tomorrowUtc = todayUtc.AddDays(1);
+
             // Check for existing duplicates to avoid spam
             var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
                 n.IsSystemAlert &&
                 n.RelatedEntityId == batch.Id &&
                 n.RelatedEntityType == "Batch" &&
                 n.Type == type &&
-                n.CreatedAt.Date == DateTime.UtcNow.Date);
+                n.CreatedAt >= todayUtc && n.CreatedAt < tomorrowUtc);
 
             if (!existingAlerts.Any())
             {
@@ -274,7 +278,7 @@ public class InventoryService : IInventoryService
 
                         if (newNotificationCreated)
                         {
-                            await scopedDashboardService.InvalidateAlertsCacheAsync();
+                            await scopedDashboardService.InvalidateActionItemsCacheAsync();
                             if (broadcastNotificationMessage != null && broadcastSeverity != null)
                             {
                                 await _broadcaster.BroadcastNotification(broadcastNotificationMessage, broadcastSeverity);
@@ -283,8 +287,8 @@ public class InventoryService : IInventoryService
                             {
                                 await _broadcaster.BroadcastSystemAlert(broadcastNotificationDto);
                             }
-                            var alerts = await scopedDashboardService.GetAlertsAsync();
-                            await _broadcaster.BroadcastAlertsUpdate(alerts);
+                            var alerts = await scopedDashboardService.GetActionItemsAsync();
+                            await _broadcaster.BroadcastActionItemsUpdate(alerts);
                         }
 
                         var stats = await scopedDashboardService.GetStatsAsync();
@@ -631,15 +635,15 @@ public class InventoryService : IInventoryService
                 n.IsSystemAlert &&
                 n.RelatedEntityId == medicine.Id &&
                 n.RelatedEntityType == "Medicine" &&
-                n.Type == NotificationType.StockAlert &&
+                n.Type == NotificationType.StockIssue &&
                 !n.IsActionTaken);
 
-            var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockAlertThresholds.CriticalPercentage);
+            var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockIssueThresholds.CriticalPercentage);
             var priority = totalStock == 0
-                ? SystemConstants.StockAlertThresholds.Priority.OutOfStock
+                ? SystemConstants.StockIssueThresholds.Priority.OutOfStock
                 : totalStock < criticalLevel
-                    ? SystemConstants.StockAlertThresholds.Priority.Critical
-                    : SystemConstants.StockAlertThresholds.Priority.Warning;
+                    ? SystemConstants.StockIssueThresholds.Priority.Critical
+                    : SystemConstants.StockIssueThresholds.Priority.Warning;
             var title = totalStock == 0 ? "Out of Stock" : "Low Stock Alert";
             var currentMessage = totalStock == 0
                 ? $"{medicine.Name} is out of stock. Immediate reorder required."
@@ -677,7 +681,7 @@ public class InventoryService : IInventoryService
                     IsSystemAlert = true,
                     Title = title,
                     Message = currentMessage,
-                    Type = NotificationType.StockAlert,
+                    Type = NotificationType.StockIssue,
                     Priority = priority,
                     IsRead = false,
                     RelatedEntityId = medicine.Id,
@@ -736,10 +740,10 @@ public class InventoryService : IInventoryService
                         // Broadcast low stock notification if created/updated
                         if (lowStockNotificationDto != null)
                         {
-                            await scopedDashboardService.InvalidateAlertsCacheAsync();
+                            await scopedDashboardService.InvalidateActionItemsCacheAsync();
                             await _broadcaster.BroadcastSystemAlert(lowStockNotificationDto);
-                            var alerts = await scopedDashboardService.GetAlertsAsync();
-                            await _broadcaster.BroadcastAlertsUpdate(alerts);
+                            var alerts = await scopedDashboardService.GetActionItemsAsync();
+                            await _broadcaster.BroadcastActionItemsUpdate(alerts);
                         }
 
                         var stats = await scopedDashboardService.GetStatsAsync();
@@ -803,10 +807,9 @@ public class InventoryService : IInventoryService
         await _cacheService.RemoveAsync(CacheKeyBuilder.StockCheck(batch.MedicineId));
 
         // Check stock level for low stock alerts (medicine already loaded via include)
-        var medicine = batch.Medicine;
         NotificationDto? lowStockNotificationDto = null;
 
-        if (medicine != null)
+        if (batch.Medicine != null)
         {
             var allBatches = await _unitOfWork.MedicineBatches.FindAsync(b =>
                 b.MedicineId == batch.MedicineId &&
@@ -814,92 +817,9 @@ public class InventoryService : IInventoryService
                 b.CurrentQuantity > 0);
 
             var totalStock = allBatches.Sum(b => b.CurrentQuantity);
-
-            if (totalStock >= medicine.LowStockThreshold)
-            {
-                // Stock is sufficient - resolve any existing low stock alerts
-                await _notificationService.ResolveActionAsync(batch.MedicineId, "Medicine", NotificationType.StockAlert);
-            }
-            else
-            {
-                // Stock is below threshold - check for unresolved notification
-                var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
-                    n.IsSystemAlert &&
-                    n.RelatedEntityId == medicine.Id &&
-                    n.RelatedEntityType == "Medicine" &&
-                    n.Type == NotificationType.StockAlert &&
-                    !n.IsActionTaken);
-
-                // Calculate priority and message
-                var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockAlertThresholds.CriticalPercentage);
-                var priority = totalStock == 0
-                    ? SystemConstants.StockAlertThresholds.Priority.OutOfStock
-                    : totalStock < criticalLevel
-                        ? SystemConstants.StockAlertThresholds.Priority.Critical
-                        : SystemConstants.StockAlertThresholds.Priority.Warning;
-                var title = totalStock == 0 ? "Out of Stock" : "Low Stock Alert";
-                var currentMessage = totalStock == 0
-                    ? $"{medicine.Name} is out of stock. Immediate reorder required."
-                    : $"{medicine.Name} is low on stock. Current quantity: {totalStock} units.";
-
-                if (existingAlerts.Any())
-                {
-                    // Update existing notification with current information
-                    var existingNotification = existingAlerts.First();
-                    existingNotification.Message = currentMessage;
-                    existingNotification.Title = title;
-                    existingNotification.Priority = priority;
-                    existingNotification.IsRead = false; // Mark unread to notify user of change
-                    _unitOfWork.Notifications.Update(existingNotification);
-                    await _unitOfWork.SaveAsync();
-
-                    // Prepare DTO for broadcasting
-                    lowStockNotificationDto = new NotificationDto
-                    {
-                        Id = existingNotification.Id,
-                        Title = existingNotification.Title,
-                        Message = existingNotification.Message,
-                        Type = existingNotification.Type,
-                        Priority = existingNotification.Priority,
-                        IsRead = existingNotification.IsRead,
-                        CreatedAt = existingNotification.CreatedAt
-                    };
-                }
-                else
-                {
-                    // Create new notification
-                    var notification = new Notification
-                    {
-                        UserId = null,
-                        IsSystemAlert = true,
-                        Title = title,
-                        Message = currentMessage,
-                        Type = NotificationType.StockAlert,
-                        Priority = priority,
-                        IsRead = false,
-                        // Handled by AuditableEntityInterceptor
-                        // CreatedAt = DateTime.UtcNow,
-                        RelatedEntityId = medicine.Id,
-                        RelatedEntityType = "Medicine"
-                    };
-
-                    await _unitOfWork.Notifications.AddAsync(notification);
-                    await _unitOfWork.SaveAsync();
-
-                    // Prepare DTO for broadcasting
-                    lowStockNotificationDto = new NotificationDto
-                    {
-                        Id = notification.Id,
-                        Title = notification.Title,
-                        Message = notification.Message,
-                        Type = notification.Type,
-                        Priority = notification.Priority,
-                        IsRead = notification.IsRead,
-                        CreatedAt = notification.CreatedAt
-                    };
-                }
-            }
+            lowStockNotificationDto = await _notificationService.HandleLowStockNotificationAsync(batch.MedicineId, totalStock);
         }
+
 
         // Broadcast dashboard updates
         if (_broadcaster != null)
@@ -915,10 +835,10 @@ public class InventoryService : IInventoryService
                         // Broadcast low stock notification if created/updated
                         if (lowStockNotificationDto != null)
                         {
-                            await scopedDashboardService.InvalidateAlertsCacheAsync();
+                            await scopedDashboardService.InvalidateActionItemsCacheAsync();
                             await _broadcaster.BroadcastSystemAlert(lowStockNotificationDto);
-                            var alerts = await scopedDashboardService.GetAlertsAsync();
-                            await _broadcaster.BroadcastAlertsUpdate(alerts);
+                            var alerts = await scopedDashboardService.GetActionItemsAsync();
+                            await _broadcaster.BroadcastActionItemsUpdate(alerts);
                         }
 
                         var stats = await scopedDashboardService.GetStatsAsync();
@@ -940,13 +860,13 @@ public class InventoryService : IInventoryService
 
     public async Task<IEnumerable<ExpiryManagementDto>> GetBatchesByExpiryStatusAsync(string? status)
     {
-        // Get all active batches
-        var batches = (await _unitOfWork.MedicineBatches.FindAsync(b => b.IsActive && b.CurrentQuantity > 0)).ToList();
-
-        // Get all medicines, suppliers, and expiry rules
-        var medicines = (await _unitOfWork.Medicines.GetAllAsync()).ToDictionary(m => m.Id);
-        var suppliers = (await _unitOfWork.Suppliers.GetAllAsync()).ToDictionary(s => s.Id);
-        var categories = (await _unitOfWork.Categories.GetAllAsync()).ToDictionary(c => c.Id);
+        // Use GetQueryable to pull only relevant data with JOINs instead of full table dictionaries
+        var query = _unitOfWork.MedicineBatches.GetQueryable()
+            .Include(b => b.Medicine).ThenInclude(m => m.Category)
+            .Include(b => b.Supplier)
+            .Where(b => b.IsActive && b.CurrentQuantity > 0);
+            
+        var batches = await query.ToListAsync();
         var expiryRules = (await _unitOfWork.ExpiryRules.FindAsync(r => r.IsActive)).ToList();
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -954,8 +874,10 @@ public class InventoryService : IInventoryService
 
         foreach (var batch in batches)
         {
-            if (!medicines.TryGetValue(batch.MedicineId, out var medicine)) continue;
-            if (!suppliers.TryGetValue(batch.SupplierId, out var supplier)) continue;
+            var medicine = batch.Medicine;
+            var supplier = batch.Supplier;
+
+            if (medicine == null || supplier == null) continue;
 
             // Find applicable rule: category-specific first, then global
             var rule = expiryRules.FirstOrDefault(r => r.CategoryId == medicine.CategoryId)
@@ -995,9 +917,7 @@ public class InventoryService : IInventoryService
 
             if (includeInResult)
             {
-                var categoryName = categories.TryGetValue(medicine.CategoryId, out var category)
-                    ? category.Name
-                    : "Uncategorized";
+                var categoryName = medicine.Category?.Name ?? "Uncategorized";
 
                 result.Add(new ExpiryManagementDto
                 {

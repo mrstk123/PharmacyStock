@@ -54,6 +54,7 @@ public class MedicineServiceTests
 
         _mockUnitOfWork.Setup(x => x.Medicines.FindAsync(
             It.IsAny<Expression<Func<Medicine, bool>>>(),
+            It.IsAny<Func<IQueryable<Medicine>, IOrderedQueryable<Medicine>>>(),
             It.IsAny<Expression<Func<Medicine, object>>[]>()
         )).ReturnsAsync(medicines);
 

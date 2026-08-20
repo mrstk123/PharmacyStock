@@ -19,19 +19,18 @@ public class MedicinesController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = PermissionConstants.MedicinesView)]
-    public async Task<ActionResult<PaginatedResult<MedicineDto>>> GetMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] bool? isActive = null, [FromQuery] string? sortField = null, [FromQuery] int? sortOrder = null)
+    public async Task<ActionResult<PaginatedResult<MedicineDto>>> GetMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? q = null, [FromQuery] bool? isActive = null, [FromQuery] string? sortField = null, [FromQuery] int? sortOrder = null)
     {
-        var result = await _medicineService.GetPaginatedMedicinesAsync(page, pageSize, isActive, sortField, sortOrder);
+        var result = await _medicineService.GetPaginatedMedicinesAsync(page, pageSize, q, isActive, sortField, sortOrder);
         return Ok(result);
     }
 
-    [HttpGet("search")]
+    [HttpGet("all")]
     [Authorize(Policy = PermissionConstants.MedicinesView)]
-    public async Task<ActionResult<IEnumerable<MedicineDto>>> Search([FromQuery] string q, [FromQuery] bool? isActive = null, [FromQuery] string? sortField = null, [FromQuery] int? sortOrder = null)
+    public async Task<ActionResult<IEnumerable<MedicineDto>>> GetAllMedicines([FromQuery] bool? isActive = null)
     {
-        if (string.IsNullOrEmpty(q)) return BadRequest("Query string is required");
-        var results = await _medicineService.SearchMedicinesAsync(q, isActive, sortField, sortOrder);
-        return Ok(results);
+        var result = await _medicineService.GetAllMedicinesAsync(isActive);
+        return Ok(result);
     }
 
     [HttpGet("{id}")]

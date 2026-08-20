@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PharmacyStock.Application.DTOs;
 using PharmacyStock.Application.Interfaces;
-using System.Security.Claims;
 
 namespace PharmacyStock.API.Controllers;
 

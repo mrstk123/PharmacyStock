@@ -58,6 +58,16 @@ public class NotificationGeneratorService : INotificationGeneratorService
 
         var expiryRules = (await _unitOfWork.ExpiryRules.FindAsync(r => r.IsActive)).ToList();
 
+        // Prefetch all unresolved active batch expiry alerts to prevent N+1 queries
+        var existingAlertsList = await _unitOfWork.Notifications.FindAsync(n =>
+            n.IsSystemAlert &&
+            n.RelatedEntityType == "Batch" &&
+            (n.Type == NotificationType.Critical || n.Type == NotificationType.Warning) &&
+            !n.IsActionTaken);
+        
+        var existingAlertsLookup = existingAlertsList
+            .ToLookup(n => new { n.RelatedEntityId, n.Type });
+
         var notifications = new List<Notification>();
         var criticalCount = 0;
         var warningCount = 0;
@@ -81,12 +91,7 @@ public class NotificationGeneratorService : INotificationGeneratorService
             if (daysUntilExpiry > 0 && daysUntilExpiry <= rule.CriticalDays)
             {
                 // Check if unresolved system alert already exists for this batch
-                var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
-                    n.IsSystemAlert &&
-                    n.RelatedEntityId == batch.Id &&
-                    n.RelatedEntityType == "Batch" &&
-                    n.Type == NotificationType.Critical &&
-                    !n.IsActionTaken);
+                var existingAlerts = existingAlertsLookup[new { RelatedEntityId = (int?)batch.Id, Type = NotificationType.Critical }];
 
                 var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.";
 
@@ -122,12 +127,7 @@ public class NotificationGeneratorService : INotificationGeneratorService
             else if (daysUntilExpiry > rule.CriticalDays && daysUntilExpiry <= rule.WarningDays)
             {
                 // Check if unresolved system alert already exists for this batch
-                var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
-                    n.IsSystemAlert &&
-                    n.RelatedEntityId == batch.Id &&
-                    n.RelatedEntityType == "Batch" &&
-                    n.Type == NotificationType.Warning &&
-                    !n.IsActionTaken);
+                var existingAlerts = existingAlertsLookup[new { RelatedEntityId = (int?)batch.Id, Type = NotificationType.Warning }];
 
                 var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expires in {daysUntilExpiry} days. Quantity: {batch.CurrentQuantity} units.";
 
@@ -183,8 +183,8 @@ public class NotificationGeneratorService : INotificationGeneratorService
                 // Broadcast stats update
                 var stats = await _dashboardService.GetStatsAsync();
                 await _broadcaster.BroadcastStatsUpdate(stats);
-                var alerts = await _dashboardService.GetAlertsAsync();
-                await _broadcaster.BroadcastAlertsUpdate(alerts);
+                var alerts = await _dashboardService.GetActionItemsAsync();
+                await _broadcaster.BroadcastActionItemsUpdate(alerts);
             }
         }
         else
@@ -215,6 +215,16 @@ public class NotificationGeneratorService : INotificationGeneratorService
             .Where(m => m.Medicine != null && m.TotalQty < m.Medicine.LowStockThreshold)
             .ToList();
 
+        // Prefetch all unresolved active low stock alerts to prevent N+1 queries
+        var existingAlertsList = await _unitOfWork.Notifications.FindAsync(n =>
+            n.IsSystemAlert &&
+            n.RelatedEntityType == "Medicine" &&
+            n.Type == NotificationType.StockIssue &&
+            !n.IsActionTaken);
+        
+        var existingAlertsLookup = existingAlertsList
+            .ToLookup(n => n.RelatedEntityId);
+
         var notifications = new List<Notification>();
 
         foreach (var stock in medicineStocks)
@@ -225,23 +235,18 @@ public class NotificationGeneratorService : INotificationGeneratorService
             if (medicine == null) continue;
 
             // Check if unresolved system alert already exists for this medicine
-            var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
-                n.IsSystemAlert &&
-                n.RelatedEntityId == medicine.Id &&
-                n.RelatedEntityType == "Medicine" &&
-                n.Type == NotificationType.StockAlert &&
-                !n.IsActionTaken);
+            var existingAlerts = existingAlertsLookup[(int?)medicine.Id];
 
             // Priority calculation based on percentage of threshold
             // - Out of stock (0) = Priority 5 (Critical)
             // - Below 50% of threshold = Priority 4 (High)
             // - Above 50% but below threshold = Priority 3 (Warning)
-            var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockAlertThresholds.CriticalPercentage);
+            var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockIssueThresholds.CriticalPercentage);
             var priority = stock.TotalQty == 0
-                ? SystemConstants.StockAlertThresholds.Priority.OutOfStock
+                ? SystemConstants.StockIssueThresholds.Priority.OutOfStock
                 : stock.TotalQty < criticalLevel
-                    ? SystemConstants.StockAlertThresholds.Priority.Critical
-                    : SystemConstants.StockAlertThresholds.Priority.Warning;
+                    ? SystemConstants.StockIssueThresholds.Priority.Critical
+                    : SystemConstants.StockIssueThresholds.Priority.Warning;
             var title = stock.TotalQty == 0 ? "Out of Stock" : "Low Stock Alert";
             var currentMessage = stock.TotalQty == 0
                 ? $"{medicine.Name} is out of stock. Immediate reorder required."
@@ -266,7 +271,7 @@ public class NotificationGeneratorService : INotificationGeneratorService
                     IsSystemAlert = true,
                     Title = title,
                     Message = currentMessage,
-                    Type = NotificationType.StockAlert,
+                    Type = NotificationType.StockIssue,
                     Priority = priority,
                     IsRead = false,
                     // Handled by AuditableEntityInterceptor
@@ -296,8 +301,8 @@ public class NotificationGeneratorService : INotificationGeneratorService
                 // Broadcast stats update
                 var stats = await _dashboardService.GetStatsAsync();
                 await _broadcaster.BroadcastStatsUpdate(stats);
-                var alerts = await _dashboardService.GetAlertsAsync();
-                await _broadcaster.BroadcastAlertsUpdate(alerts);
+                var alerts = await _dashboardService.GetActionItemsAsync();
+                await _broadcaster.BroadcastActionItemsUpdate(alerts);
             }
         }
         else
@@ -318,6 +323,15 @@ public class NotificationGeneratorService : INotificationGeneratorService
             b => b.Medicine
         );
 
+        // Prefetch all unresolved active expired batch alerts to prevent N+1 queries
+        var existingAlertsList = await _unitOfWork.Notifications.FindAsync(n =>
+            n.IsSystemAlert &&
+            n.RelatedEntityType == "ExpiredBatch" &&
+            !n.IsActionTaken);
+        
+        var existingAlertsLookup = existingAlertsList
+            .ToLookup(n => n.RelatedEntityId);
+
         var notifications = new List<Notification>();
 
         foreach (var batch in expiredBatches)
@@ -328,11 +342,7 @@ public class NotificationGeneratorService : INotificationGeneratorService
             if (medicine == null) continue;
 
             // Check if unresolved system alert already exists for this batch
-            var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
-                n.IsSystemAlert &&
-                n.RelatedEntityId == batch.Id &&
-                n.RelatedEntityType == "ExpiredBatch" &&
-                !n.IsActionTaken);
+            var existingAlerts = existingAlertsLookup[(int?)batch.Id];
 
             var daysExpired = today.DayNumber - batch.ExpiryDate.DayNumber;
             var currentMessage = $"{medicine.Name} (Batch {batch.BatchNumber}) expired {daysExpired} days ago. Quantity: {batch.CurrentQuantity} units. Requires proper disposal.";
@@ -384,8 +394,8 @@ public class NotificationGeneratorService : INotificationGeneratorService
                 // Broadcast stats update
                 var stats = await _dashboardService.GetStatsAsync();
                 await _broadcaster.BroadcastStatsUpdate(stats);
-                var alerts = await _dashboardService.GetAlertsAsync();
-                await _broadcaster.BroadcastAlertsUpdate(alerts);
+                var alerts = await _dashboardService.GetActionItemsAsync();
+                await _broadcaster.BroadcastActionItemsUpdate(alerts);
             }
         }
         else

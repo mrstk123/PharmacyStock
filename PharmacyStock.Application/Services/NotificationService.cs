@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PharmacyStock.Application.DTOs;
 using PharmacyStock.Application.Interfaces;
+using PharmacyStock.Domain.Constants;
 using PharmacyStock.Domain.Entities;
 using PharmacyStock.Domain.Enums;
 using PharmacyStock.Domain.Interfaces;
@@ -70,14 +71,14 @@ public class NotificationService : INotificationService
             if (_broadcaster != null)
             {
                 // Invalidate dashboard cache so new stats are fetched fresh
-                await _dashboardService.InvalidateAlertsCacheAsync();
+                await _dashboardService.InvalidateActionItemsCacheAsync();
 
                 // Push real-time updates to dashboard
                 var stats = await _dashboardService.GetStatsAsync();
-                var alerts = await _dashboardService.GetAlertsAsync();
+                var alerts = await _dashboardService.GetActionItemsAsync();
 
                 await _broadcaster.BroadcastStatsUpdate(stats);
-                await _broadcaster.BroadcastAlertsUpdate(alerts);
+                await _broadcaster.BroadcastActionItemsUpdate(alerts);
             }
         }
     }
@@ -141,5 +142,79 @@ public class NotificationService : INotificationService
 
         _unitOfWork.Notifications.Delete(notification);
         await _unitOfWork.SaveAsync();
+    }
+
+    public async Task<NotificationDto?> HandleLowStockNotificationAsync(int medicineId, int totalStock)
+    {
+        var medicine = await _unitOfWork.Medicines.GetByIdAsync(medicineId);
+        if (medicine == null) return null;
+
+        if (totalStock >= medicine.LowStockThreshold)
+        {
+            // Stock is sufficient - resolve any existing low-stock alert
+            await ResolveActionAsync(medicineId, "Medicine", NotificationType.StockIssue);
+            return null;
+        }
+
+        // Stock is below threshold - calculate priority and message
+        var criticalLevel = (int)(medicine.LowStockThreshold * SystemConstants.StockIssueThresholds.CriticalPercentage);
+        var priority = totalStock == 0
+            ? SystemConstants.StockIssueThresholds.Priority.OutOfStock
+            : totalStock < criticalLevel
+                ? SystemConstants.StockIssueThresholds.Priority.Critical
+                : SystemConstants.StockIssueThresholds.Priority.Warning;
+        var title = totalStock == 0 ? "Out of Stock" : "Low Stock Alert";
+        var message = totalStock == 0
+            ? $"{medicine.Name} is out of stock. Immediate reorder required."
+            : $"{medicine.Name} is low on stock. Current quantity: {totalStock} units.";
+
+        var existingAlerts = await _unitOfWork.Notifications.FindAsync(n =>
+            n.IsSystemAlert &&
+            n.RelatedEntityId == medicineId &&
+            n.RelatedEntityType == "Medicine" &&
+            n.Type == NotificationType.StockIssue &&
+            !n.IsActionTaken);
+
+        Notification notification;
+        if (existingAlerts.Any())
+        {
+            // Update existing notification
+            notification = existingAlerts.First();
+            notification.Message = message;
+            notification.Title = title;
+            notification.Priority = priority;
+            notification.IsRead = false; // Mark unread to notify user of change
+            _unitOfWork.Notifications.Update(notification);
+        }
+        else
+        {
+            // Create new notification
+            notification = new Notification
+            {
+                UserId = null,
+                IsSystemAlert = true,
+                Title = title,
+                Message = message,
+                Type = NotificationType.StockIssue,
+                Priority = priority,
+                IsRead = false,
+                RelatedEntityId = medicineId,
+                RelatedEntityType = "Medicine"
+            };
+            await _unitOfWork.Notifications.AddAsync(notification);
+        }
+
+        await _unitOfWork.SaveAsync();
+
+        return new NotificationDto
+        {
+            Id = notification.Id,
+            Title = notification.Title,
+            Message = notification.Message,
+            Type = notification.Type,
+            Priority = notification.Priority,
+            IsRead = notification.IsRead,
+            CreatedAt = notification.CreatedAt
+        };
     }
 }

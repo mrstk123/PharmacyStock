@@ -52,24 +52,32 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponseDto>> Refresh(RefreshTokenDto? refreshTokenRequest)
+    public async Task<ActionResult<LoginResponseDto>> Refresh()
     {
-        var refreshToken = refreshTokenRequest?.RefreshToken ?? Request.Cookies["refreshToken"];
+        var refreshToken = Request.Cookies["refreshToken"];
+        var accessToken = Request.Cookies["accessToken"];
 
         if (string.IsNullOrEmpty(refreshToken))
         {
             return Unauthorized(new { message = "No refresh token provided" });
         }
 
-        var result = await _authService.RefreshTokenAsync(new RefreshTokenDto { RefreshToken = refreshToken });
-        if (result == null)
+        if (string.IsNullOrEmpty(accessToken))
         {
-            return Unauthorized(new { message = "Invalid or expired refresh token" });
+            return Unauthorized(new { message = "No access token provided" });
         }
 
-        SetTokenCookie(result.AccessToken, result.RefreshToken, result.IsPersistent, result.RefreshTokenExpiration);
-
-        return Ok(result);
+        try
+        {
+            var result = await _authService.RefreshTokenAsync(new RefreshTokenDto { RefreshToken = refreshToken, AccessToken = accessToken });
+            SetTokenCookie(result.AccessToken, result.RefreshToken, result.IsPersistent, result.RefreshTokenExpiration);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Token refresh failed for request from {IP}", HttpContext.Connection.RemoteIpAddress);
+            return Unauthorized(new { message = "Invalid or expired refresh token" });
+        }
     }
 
     [HttpPost("forgot-password")]

@@ -12,7 +12,7 @@ public static class CacheKeyBuilder
     private const string AllMedicinesKey = "all_medicines";
     private const string AllCategoriesKey = "all_categories";
     private const string AllSuppliersKey = "all_suppliers";
-    private const string DashboardAlertsKey = "dashboard_alerts";
+    private const string DashboardActionItemsKey = "dashboard_action_items";
 
     /// <summary>
     /// Generates cache key for stock check data.
@@ -45,7 +45,7 @@ public static class CacheKeyBuilder
     public static string AllSuppliers() => AllSuppliersKey;
 
     /// <summary>
-    /// Generates cache key for dashboard alerts.
+    /// Generates cache key for dashboard action items.
     /// </summary>
-    public static string DashboardAlerts() => DashboardAlertsKey;
+    public static string DashboardActionItems() => DashboardActionItemsKey;
 }

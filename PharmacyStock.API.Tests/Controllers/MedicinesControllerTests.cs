@@ -66,7 +66,7 @@ public class MedicinesControllerTests : IClassFixture<WebApplicationFactory<Prog
             2, 1, 10
         );
 
-        _mockMedicineService.Setup(x => x.GetPaginatedMedicinesAsync(1, 10, null, null, null))
+        _mockMedicineService.Setup(x => x.GetPaginatedMedicinesAsync(1, 10, null, null, null, null))
             .ReturnsAsync(paginatedResult);
 
         // Act

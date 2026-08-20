@@ -1,12 +1,12 @@
 namespace PharmacyStock.Application.DTOs;
 
-public class DashboardAlertsDto
+public class DashboardActionItemsDto
 {
-    public List<AlertItemDto> Critical { get; set; } = new List<AlertItemDto>();
-    public List<AlertItemDto> Warning { get; set; } = new List<AlertItemDto>();
+    public List<ActionItemDto> Alerts { get; set; } = new List<ActionItemDto>();
+    public List<ActionItemDto> Warnings { get; set; } = new List<ActionItemDto>();
 }
 
-public class AlertItemDto
+public class ActionItemDto
 {
     public int MedicineId { get; set; }
     public string MedicineName { get; set; } = null!;
@@ -34,7 +34,7 @@ public class DashboardStatsDto
     public int LowStockItems { get; set; }
 }
 
-public class LowStockAlertDto
+public class LowStockIssueDto
 {
     public int MedicineId { get; set; }
     public string MedicineName { get; set; } = null!;

@@ -19,7 +19,7 @@ public static class SystemConstants
     /// Stock alert threshold percentages for priority calculation.
     /// When stock falls below LowStockThreshold, this determines priority levels.
     /// </summary>
-    public static class StockAlertThresholds
+    public static class StockIssueThresholds
     {
         /// <summary>
         /// Critical level: 50% of LowStockThreshold. Below this = Priority 4 (High)

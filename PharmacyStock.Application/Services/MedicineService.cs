@@ -32,13 +32,16 @@ public class MedicineService : IMedicineService
         _broadcaster = broadcaster;
     }
 
-    public async Task<IEnumerable<MedicineDto>> GetAllMedicinesAsync()
+    public async Task<IEnumerable<MedicineDto>> GetAllMedicinesAsync(bool? isActive = null)
     {
-        var medicines = await _unitOfWork.Medicines.FindAsync(m => true, m => m.Category);
+        var medicines = await _unitOfWork.Medicines.FindAsync(
+            m => !isActive.HasValue || m.IsActive == isActive.Value, 
+            q => q.OrderBy(m => m.Name),
+            m => m.Category);
         return _mapper.Map<IEnumerable<MedicineDto>>(medicines);
     }
 
-    public async Task<PaginatedResult<MedicineDto>> GetPaginatedMedicinesAsync(int pageIndex, int pageSize, bool? isActive = null, string? sortField = null, int? sortOrder = null)
+    public async Task<PaginatedResult<MedicineDto>> GetPaginatedMedicinesAsync(int pageIndex, int pageSize, string? searchQuery = null, bool? isActive = null, string? sortField = null, int? sortOrder = null)
     {
         var allMedicines = await _cacheService.GetAsync<List<MedicineDto>>(CacheKeyBuilder.AllMedicines());
 
@@ -51,6 +54,15 @@ public class MedicineService : IMedicineService
         }
 
         var query = allMedicines.AsQueryable();
+
+        if (!string.IsNullOrEmpty(searchQuery))
+        {
+            var qLower = searchQuery.ToLower();
+            query = query.Where(m =>
+                m.MedicineCode.ToLower().Contains(qLower) ||
+                m.Name.ToLower().Contains(qLower) ||
+                (m.GenericName != null && m.GenericName.ToLower().Contains(qLower)));
+        }
 
         if (isActive.HasValue)
         {
@@ -83,37 +95,7 @@ public class MedicineService : IMedicineService
         return new PaginatedResult<MedicineDto>(items, totalCount, pageIndex, pageSize);
     }
 
-    public async Task<IEnumerable<MedicineDto>> SearchMedicinesAsync(string query, bool? isActive = null, string? sortField = null, int? sortOrder = null)
-    {
-        // Use eager loading for search too - case-insensitive search
-        var queryLower = query.ToLower();
-        var medicines = await _unitOfWork.Medicines.FindAsync(m =>
-            m.MedicineCode.ToLower().Contains(queryLower) ||
-            m.Name.ToLower().Contains(queryLower) ||
-            (m.GenericName != null && m.GenericName.ToLower().Contains(queryLower)),
-            m => m.Category);
 
-        if (isActive.HasValue)
-        {
-            medicines = medicines.Where(m => m.IsActive == isActive.Value);
-        }
-
-        var dtos = _mapper.Map<IEnumerable<MedicineDto>>(medicines);
-
-        if (!string.IsNullOrEmpty(sortField))
-        {
-            var isAsc = sortOrder == 1;
-            dtos = sortField.ToLower() switch
-            {
-                "medicinecode" => isAsc ? dtos.OrderBy(m => m.MedicineCode) : dtos.OrderByDescending(m => m.MedicineCode),
-                "name" => isAsc ? dtos.OrderBy(m => m.Name) : dtos.OrderByDescending(m => m.Name),
-                "categoryname" => isAsc ? dtos.OrderBy(m => m.CategoryName) : dtos.OrderByDescending(m => m.CategoryName),
-                _ => dtos
-            };
-        }
-
-        return dtos;
-    }
 
     public async Task<MedicineDto?> GetMedicineByIdAsync(int id)
     {

@@ -19,19 +19,19 @@ public class DashboardService : IDashboardService
         _cache = cache;
     }
 
-    public async Task<DashboardAlertsDto> GetAlertsAsync()
+    public async Task<DashboardActionItemsDto> GetActionItemsAsync()
     {
-        var cachedAlerts = await _cache.GetAsync<DashboardAlertsDto>(CacheKeyBuilder.DashboardAlerts());
-        if (cachedAlerts != null)
+        var cachedActionItems = await _cache.GetAsync<DashboardActionItemsDto>(CacheKeyBuilder.DashboardActionItems());
+        if (cachedActionItems != null)
         {
-            return cachedAlerts;
+            return cachedActionItems;
         }
 
         // Fetch unresolved system alerts from Notifications table (Single Source of Truth)
         var notifications = await _unitOfWork.Notifications.FindAsync(n =>
             n.IsSystemAlert &&
             !n.IsActionTaken &&
-            (n.Type == NotificationType.Critical || n.Type == NotificationType.Warning || n.Type == NotificationType.StockAlert) &&
+            (n.Type == NotificationType.Critical || n.Type == NotificationType.Warning || n.Type == NotificationType.StockIssue) &&
             (n.RelatedEntityType == "Batch" || n.RelatedEntityType == "ExpiredBatch" || n.RelatedEntityType == "Medicine"));
 
         // Get related IDs
@@ -54,11 +54,11 @@ public class DashboardService : IDashboardService
 
         var medicines = medicinesFromBatches.Concat(additionalMedicines).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        var alerts = new DashboardAlertsDto();
+        var actionItems = new DashboardActionItemsDto();
 
         foreach (var notification in notifications)
         {
-            AlertItemDto? alertItem = null;
+            ActionItemDto? actionItem = null;
 
             // Handle Batch/ExpiredBatch Alerts
             if ((notification.RelatedEntityType == "Batch" || notification.RelatedEntityType == "ExpiredBatch") &&
@@ -69,7 +69,7 @@ public class DashboardService : IDashboardService
                 var daysRemaining = (batch.ExpiryDate.ToDateTime(TimeOnly.MinValue) - DateTime.UtcNow).Days;
                 var medicineName = batch.Medicine?.Name ?? "Unknown";
 
-                alertItem = new AlertItemDto
+                actionItem = new ActionItemDto
                 {
                     MedicineId = batch.MedicineId,
                     MedicineName = medicineName,
@@ -85,7 +85,7 @@ public class DashboardService : IDashboardService
                      notification.RelatedEntityId.HasValue &&
                      medicines.TryGetValue(notification.RelatedEntityId.Value, out var medName))
             {
-                alertItem = new AlertItemDto
+                actionItem = new ActionItemDto
                 {
                     MedicineId = notification.RelatedEntityId.Value,
                     MedicineName = medName,
@@ -97,25 +97,25 @@ public class DashboardService : IDashboardService
                 };
             }
 
-            if (alertItem != null)
+            if (actionItem != null)
             {
                 // Classify based on Type or Priority
                 if (notification.Type == NotificationType.Critical ||
-                   (notification.Type == NotificationType.StockAlert && notification.Priority >= 4))
+                   (notification.Type == NotificationType.StockIssue && notification.Priority >= 4))
                 {
-                    alerts.Critical.Add(alertItem);
+                    actionItems.Alerts.Add(actionItem);
                 }
                 else if (notification.Type == NotificationType.Warning ||
-                        (notification.Type == NotificationType.StockAlert && notification.Priority < 4))
+                        (notification.Type == NotificationType.StockIssue && notification.Priority < 4))
                 {
-                    alerts.Warning.Add(alertItem);
+                    actionItems.Warnings.Add(actionItem);
                 }
             }
         }
 
-        await _cache.SetAsync(CacheKeyBuilder.DashboardAlerts(), alerts, TimeSpan.FromMinutes(30));
+        await _cache.SetAsync(CacheKeyBuilder.DashboardActionItems(), actionItems, TimeSpan.FromMinutes(30));
 
-        return alerts;
+        return actionItems;
     }
 
     public async Task<InventoryValuationDto> GetValuationAsync()
@@ -135,7 +135,7 @@ public class DashboardService : IDashboardService
         // Explicitly filter for active medicines only
         var medicines = await _unitOfWork.Medicines.FindAsync(m => m.IsActive == true);
         var batches = await _unitOfWork.MedicineBatches.FindAsync(b => b.IsActive && b.CurrentQuantity > 0);
-        var alerts = await GetAlertsAsync();
+        var actionItems = await GetActionItemsAsync();
 
         // Create medicine dictionary for threshold lookup
         var medicineDict = medicines.ToDictionary(m => m.Id);
@@ -150,14 +150,14 @@ public class DashboardService : IDashboardService
         {
             TotalMedicines = medicines.Count(),
             TotalInventoryValue = batches.Sum(b => b.CurrentQuantity * b.PurchasePrice),
-            CriticalAlerts = alerts.Critical.Count,
-            WarningAlerts = alerts.Warning.Count,
+            CriticalAlerts = actionItems.Alerts.Count,
+            WarningAlerts = actionItems.Warnings.Count,
             ActiveBatches = batches.Count(),
             LowStockItems = medicineStocks
         };
     }
 
-    public async Task<List<LowStockAlertDto>> GetLowStockAlertsAsync(int threshold = 50)
+    public async Task<List<LowStockIssueDto>> GetLowStockIssuesAsync(int threshold = 50)
     {
         // Fetch batches with Medicine and Category includes in single query
         var batches = await _unitOfWork.MedicineBatches.FindAsync(
@@ -176,7 +176,7 @@ public class DashboardService : IDashboardService
             })
             .ToList();
 
-        var result = new List<LowStockAlertDto>();
+        var result = new List<LowStockIssueDto>();
         foreach (var item in medicineStocks)
         {
             if (item.Medicine == null) continue;
@@ -184,7 +184,7 @@ public class DashboardService : IDashboardService
 
             if (item.TotalQty < medicineThreshold)
             {
-                result.Add(new LowStockAlertDto
+                result.Add(new LowStockIssueDto
                 {
                     MedicineId = item.Medicine.Id,
                     MedicineName = item.Medicine.Name,
@@ -232,8 +232,8 @@ public class DashboardService : IDashboardService
             .ToList();
     }
 
-    public async Task InvalidateAlertsCacheAsync()
+    public async Task InvalidateActionItemsCacheAsync()
     {
-        await _cache.RemoveAsync(CacheKeyBuilder.DashboardAlerts());
+        await _cache.RemoveAsync(CacheKeyBuilder.DashboardActionItems());
     }
 }

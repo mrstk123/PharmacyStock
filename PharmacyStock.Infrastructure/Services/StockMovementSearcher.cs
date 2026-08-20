@@ -23,10 +23,16 @@ public class StockMovementSearcher : IStockMovementSearcher
             .AsQueryable();
 
         if (fromDate.HasValue)
-            query = query.Where(sm => sm.PerformedAt.Date >= fromDate.Value.Date);
+        {
+            var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+            query = query.Where(sm => sm.PerformedAt >= fromUtc);
+        }
 
         if (toDate.HasValue)
-            query = query.Where(sm => sm.PerformedAt.Date <= toDate.Value.Date);
+        {
+            var toUtc = DateTime.SpecifyKind(toDate.Value.Date, DateTimeKind.Utc).AddDays(1).AddTicks(-1);
+            query = query.Where(sm => sm.PerformedAt <= toUtc);
+        }
 
         if (medicineId.HasValue)
             query = query.Where(sm => sm.MedicineBatch.MedicineId == medicineId.Value);

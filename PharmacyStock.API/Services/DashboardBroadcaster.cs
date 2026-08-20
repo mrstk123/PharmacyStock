@@ -18,9 +18,9 @@ public class DashboardBroadcaster : IDashboardBroadcaster
         await _hubContext.Clients.All.SendAsync("StatsUpdated", stats);
     }
 
-    public async Task BroadcastAlertsUpdate(DashboardAlertsDto alerts)
+    public async Task BroadcastActionItemsUpdate(DashboardActionItemsDto actionItems)
     {
-        await _hubContext.Clients.All.SendAsync("AlertsUpdated", alerts);
+        await _hubContext.Clients.All.SendAsync("ActionItemsUpdated", actionItems);
     }
 
     public async Task BroadcastRecentMovement(RecentMovementDto movement)
